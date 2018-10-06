@@ -1,70 +1,15 @@
-package anvil
+package wait
 
 import (
 	"os"
 
 	"github.com/kubesmith/kubesmith/pkg/client"
-	"github.com/kubesmith/kubesmith/pkg/cmd"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
-	kubesmithClient "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
-func NewWaitCommand(f client.Factory, use string) *cobra.Command {
-	o := NewWaitOptions()
-
-	c := &cobra.Command{
-		Use:   use,
-		Short: "Waits for a flag file to exist and optionally uploads any detected artifacts to a remote s3 bucket",
-		Long:  "Waits for a flag file to exist and optionally uploads any detected artifacts to a remote s3 bucket",
-		Run: func(c *cobra.Command, args []string) {
-			cmd.CheckError(o.Complete(args, f))
-			cmd.CheckError(o.Validate(c, args, f))
-			cmd.CheckError(o.Run(c, f))
-		},
-	}
-
-	o.BindFlags(c.Flags())
-
-	return c
-}
-
-type WaitOptions struct {
-	S3            WaitOptionsS3
-	FlagFile      WaitOptionsFlagFile
-	ArtifactPaths string
-	Archive       WaitOptionsArchive
-
-	client kubesmithClient.Interface
-}
-
-type WaitOptionsS3 struct {
-	Host       string
-	Port       int
-	AccessKey  string
-	SecretKey  string
-	BucketName string
-	UseSSL     bool
-}
-
-type WaitOptionsFlagFile struct {
-	Path          string
-	WatchInterval int
-}
-
-type WaitOptionsArchive struct {
-	FileName string
-	FilePath string
-}
-
-func NewWaitOptions() *WaitOptions {
-	return &WaitOptions{
-		S3: WaitOptionsS3{},
-	}
-}
-
-func (o *WaitOptions) BindFlags(flags *pflag.FlagSet) {
+func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.S3.Host, "s3-host", "minio.default.svc", "The host where the s3 server is running")
 	env.BindEnvToFlag("s3-host", flags)
 	flags.IntVar(&o.S3.Port, "s3-port", 9000, "The s3 port that artifacts will be synced to/from")
@@ -89,11 +34,11 @@ func (o *WaitOptions) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("archive-file-path", flags)
 }
 
-func (o *WaitOptions) Validate(c *cobra.Command, args []string, f client.Factory) error {
+func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
 	return nil
 }
 
-func (o *WaitOptions) Complete(args []string, f client.Factory) error {
+func (o *Options) Complete(args []string, f client.Factory) error {
 	client, err := f.Client()
 	if err != nil {
 		return err
@@ -103,6 +48,6 @@ func (o *WaitOptions) Complete(args []string, f client.Factory) error {
 	return nil
 }
 
-func (o *WaitOptions) Run(c *cobra.Command, f client.Factory) error {
+func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 	return nil
 }
