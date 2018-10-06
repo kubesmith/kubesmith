@@ -25,7 +25,7 @@ func Config(kubeconfig, kubecontext, baseName string) (*rest.Config, error) {
 	clientConfig.UserAgent = buildUserAgent(
 		baseName,
 		buildinfo.Version,
-		buildinfo.FormattedGitSHA(),
+		buildinfo.Version,
 		runtime.GOOS,
 		runtime.GOARCH,
 	)
