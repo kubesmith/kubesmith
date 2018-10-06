@@ -13,8 +13,8 @@ func NewWaitCommand(f client.Factory, use string) *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   use,
-		Short: "",
-		Long:  "",
+		Short: "Waits for a flag file to exist and optionally uploads any detected artifacts to a remote s3 bucket",
+		Long:  "Waits for a flag file to exist and optionally uploads any detected artifacts to a remote s3 bucket",
 		Run: func(c *cobra.Command, args []string) {
 			cmd.CheckError(o.Complete(args, f))
 			cmd.CheckError(o.Validate(c, args, f))

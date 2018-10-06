@@ -13,8 +13,8 @@ func NewExtractCommand(f client.Factory, use string) *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   use,
-		Short: "",
-		Long:  "",
+		Short: "Extracts remote s3 archive(s) locally",
+		Long:  "Extracts remote s3 archive(s) locally",
 		Run: func(c *cobra.Command, args []string) {
 			cmd.CheckError(o.Complete(args, f))
 			cmd.CheckError(o.Validate(c, args, f))

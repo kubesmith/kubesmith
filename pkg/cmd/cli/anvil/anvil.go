@@ -8,8 +8,8 @@ import (
 func NewCommand(f client.Factory) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "anvil",
-		Short: "",
-		Long:  "",
+		Short: "Manages artifact syncing and job lifecycle",
+		Long:  "Manages artifact syncing and job lifecycle",
 	}
 
 	c.AddCommand(

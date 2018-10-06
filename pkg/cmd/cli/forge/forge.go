@@ -13,8 +13,8 @@ func NewCommand(f client.Factory) *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   "forge",
-		Short: "",
-		Long:  "",
+		Short: "Orchestrates kubesmith pipelines from a Kubernetes controller",
+		Long:  "Orchestrates kubesmith pipelines from a Kubernetes controller",
 		Run: func(c *cobra.Command, args []string) {
 			cmd.CheckError(o.Complete(args, f))
 			cmd.CheckError(o.Validate(c, args, f))

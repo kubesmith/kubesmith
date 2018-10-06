@@ -12,8 +12,11 @@ import (
 func NewCommand(name string) *cobra.Command {
 	c := &cobra.Command{
 		Use:   name,
-		Short: "",
-		Long:  "",
+		Short: "A continuous integration platform built for Kubernetes",
+		Long: `Kubesmith is an approach to running a continuous integration platform
+that is directly integrated with Kubernetes. It provides a simple, configurable,
+and operationally robust way to perform pipeline builds directly inside
+Kubernetes -- giving you the full power of Kubernetes.`,
 	}
 
 	f := client.NewFactory(name)
