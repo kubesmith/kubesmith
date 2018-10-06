@@ -11,8 +11,8 @@ func NewCommand(f client.Factory) *cobra.Command {
 
 	c := &cobra.Command{
 		Use:   "server",
-		Short: "",
-		Long:  "",
+		Short: "Starts the forge server",
+		Long:  "Starts the forge server",
 		Run: func(c *cobra.Command, args []string) {
 			cmd.CheckError(o.Complete(args, f))
 			cmd.CheckError(o.Validate(c, args, f))
