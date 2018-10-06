@@ -1,0 +1,9 @@
+.git
+cmd/*
+examples/*
+hack/*
+pkg/*
+vendor/*
+.drone.yml
+Gopkg.lock
+Gopkg.toml

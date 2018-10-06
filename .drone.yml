@@ -1,0 +1,41 @@
+workspace:
+  base: /go
+  path: src/github.com/kubesmith/kubesmith
+
+pipeline:
+  lint-code:
+    image: golang
+    commands:
+    - "go get -u github.com/golang/lint/golint"
+    - "golint ./"
+
+  install-dependencies:
+    image: golang
+    commands:
+    - "curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh"
+    - "dep ensure -update"
+    - "dep status"
+    when:
+      event: tag
+      branch: master
+
+  build-kubesmith-linux:
+    image: golang
+    environment:
+    - CGO_ENABLED=0
+    - GOOS=linux
+    commands:
+    - "go build -a -installsuffix cgo -o kubesmith ./cmd/kubesmith/main.go"
+    when:
+      event: tag
+      branch: master
+
+  dockerize-kubesmith:
+    image: plugins/docker
+    repo: kubesmith/kubesmith
+    auto_tag: true
+    dockerfile: cmd/kubesmith/Dockerfile
+    when:
+      event: tag
+      branch: master
+    secrets: [ docker_username, docker_password ]
