@@ -427,6 +427,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/davecgh/go-spew/spew",
     "github.com/golang/glog",
     "github.com/pkg/errors",
     "github.com/spf13/cobra",
