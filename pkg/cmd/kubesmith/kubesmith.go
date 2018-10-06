@@ -6,6 +6,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd/cli/anvil"
 	"github.com/kubesmith/kubesmith/pkg/cmd/cli/forge"
+	"github.com/kubesmith/kubesmith/pkg/cmd/cli/version"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +26,7 @@ Kubernetes -- giving you the full power of Kubernetes.`,
 	c.AddCommand(
 		anvil.NewCommand(f),
 		forge.NewCommand(f),
+		version.NewCommand(f),
 	)
 
 	// add the glog flags
