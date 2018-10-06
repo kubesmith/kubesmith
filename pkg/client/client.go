@@ -25,7 +25,6 @@ func Config(kubeconfig, kubecontext, baseName string) (*rest.Config, error) {
 	clientConfig.UserAgent = buildUserAgent(
 		baseName,
 		buildinfo.Version,
-		buildinfo.Version,
 		runtime.GOOS,
 		runtime.GOARCH,
 	)
@@ -34,7 +33,6 @@ func Config(kubeconfig, kubecontext, baseName string) (*rest.Config, error) {
 }
 
 // buildUserAgent builds a User-Agent string from given args.
-func buildUserAgent(command, version, formattedSha, os, arch string) string {
-	return fmt.Sprintf(
-		"%s/%s (%s/%s) %s", command, version, os, arch, formattedSha)
+func buildUserAgent(command, version, os, arch string) string {
+	return fmt.Sprintf("%s/%s (%s/%s) %s", command, version, os, arch)
 }

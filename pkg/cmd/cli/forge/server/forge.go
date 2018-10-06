@@ -21,6 +21,14 @@ func (o *Options) Complete(args []string, f client.Factory) error {
 	}
 
 	o.client = client
+
+	kubeClient, err := f.KubeClient()
+	if err != nil {
+		return err
+	}
+
+	o.kubeClient = kubeClient
+
 	return nil
 }
 
