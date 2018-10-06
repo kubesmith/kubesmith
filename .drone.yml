@@ -26,10 +26,9 @@ pipeline:
     - GOOS=linux
     - PKG="github.com/kubesmith/kubesmith"
     commands:
-    - export LDFLAGS="-X ${PKG}/pkg/buildinfo.Version=${DRONE_TAG}"
-    - export LDFLAGS="${LDFLAGS} -X ${PKG}/pkg/buildinfo.GitSHA=${DRONE_COMMIT_SHA}"
+    - export LDFLAGS="-X ${PKG}/pkg/buildinfo.Version=${DRONE_TAG} -X ${PKG}/pkg/buildinfo.GitSHA=${DRONE_COMMIT_SHA}"
     - printenv LDFLAGS
-    - "go build -a -installsuffix cgo -o kubesmith ./cmd/kubesmith/main.go -ldflags ${LDFLAGS}"
+    - go build -a -installsuffix cgo -ldflags ${LDFLAGS} -o kubesmith ./cmd/kubesmith/main.go
     when:
       event: tag
       branch: master
