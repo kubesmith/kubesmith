@@ -17,4 +17,4 @@ git clone -b ${VERSION} https://github.com/kubernetes/apimachinery
 cd code-generator
 
 # run the code-generator entrypoint script
-./generate-groups.sh all "${ROOT}/pkg/generated/client" "${ROOT}/pkg/apis" "kubesmith:v1"
+./generate-groups.sh all "${ROOT}/pkg/generated" "${ROOT}/pkg/apis" "kubesmith:v1"
