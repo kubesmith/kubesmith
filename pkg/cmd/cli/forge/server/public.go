@@ -41,6 +41,7 @@ func (o *Options) Complete(args []string, f client.Factory) error {
 }
 
 func (o *Options) Run(c *cobra.Command, f client.Factory) error {
+	// TODO: REWORK ALL OF THIS - JUST TESTING THINGS NOW
 	var wg sync.WaitGroup
 	ctx, cancelFunc := context.WithCancel(context.Background())
 
