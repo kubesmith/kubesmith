@@ -104,7 +104,7 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 	glog.V(1).Infof("Watching for flag file to exist at: %s for %d second(s) ...", o.FlagFile.Path, o.FlagFile.WatchTimeout)
 	go watcher.WatchForFile(ctx, o.FlagFile.Path, o.FlagFile.WatchInterval, flagFileCreated)
 
-	// hang on the golang channel until the watcher detects the flag file
+	// hang on the golang channel until the watcher detects the flag file (or times out)
 	if created := <-flagFileCreated; !created {
 		glog.Exitln("Flag file was not created in time")
 	}
