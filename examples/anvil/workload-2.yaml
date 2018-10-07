@@ -1,0 +1,124 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-workload-2
+  labels:
+    app: anvil-test
+    role: example-workload-2
+data:
+  workload-script.sh: |
+    #!/bin/bash
+
+    # show the workspace
+    ls -la /workspace
+
+    # cat the files
+    cat /workspace/task-2.txt
+    cat /workspace/task-4.txt
+    cat /workspace/task-10.txt
+
+    # modify the contents of task-10.txt
+    echo "Hello, world - from example-workload-2" > /workspace/task-10.txt
+
+    # write the IPC flag file
+    touch /workspace/done-doing-work
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-workload-2
+  labels:
+    app: anvil-test
+    role: example-workload-2
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: anvil-extract
+        image: kubesmith/kubesmith:0.1
+        imagePullPolicy: Always
+        command: ['kubesmith', 'anvil', 'extract', '--logtostderr', '-v', '2']
+        env:
+        - name: S3_HOST
+          value: "minio.default.svc"
+        - name: S3_PORT
+          value: "9000"
+        - name: S3_BUCKET_NAME
+          value: "anvil-example"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-secret-key
+        - name: S3_USE_SSL
+          value: "false"
+        - name: LOCAL_PATH
+          value: "/workspace"
+        - name: REMOTE_ARCHIVE_PATHS
+          value: "example-workload-1.tar.gz"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+      containers:
+      - name: task-that-needed-previous-artifacts
+        image: library/bash
+        command: ['bash', '/scripts/workload-script.sh']
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: workspace
+          mountPath: /workspace
+        - name: artifacts
+          mountPath: /artifacts
+      - name: anvil-wait
+        image: kubesmith/kubesmith:0.1
+        imagePullPolicy: Always
+        command: ['kubesmith', 'anvil', 'wait', '--logtostderr', '-v', '2']
+        env:
+        - name: S3_HOST
+          value: "minio.default.svc"
+        - name: S3_PORT
+          value: "9000"
+        - name: S3_BUCKET_NAME
+          value: "anvil-example"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-secret-key
+        - name: S3_USE_SSL
+          value: "false"
+        - name: ARCHIVE_FILE_NAME
+          value: "example-workload-2.tar.gz"
+        - name: ARCHIVE_FILE_PATH
+          value: "/artifacts"
+        - name: ARTIFACT_PATHS
+          value: "/workspace/task-10*"
+        - name: FLAG_FILE_PATH
+          value: "/workspace/done-doing-work"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        - name: artifacts
+          mountPath: /artifacts
+      volumes:
+      - name: scripts
+        configMap:
+          name: example-workload-2
+      - name: workspace
+        emptyDir: {}
+      - name: artifacts
+        emptyDir: {}

@@ -1,0 +1,80 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: example-workload-3
+  labels:
+    app: anvil-test
+    role: example-workload-3
+data:
+  workload-script.sh: |
+    #!/bin/bash
+
+    # show the workspace
+    ls -la /workspace
+
+    # cat the files
+    cat /workspace/task-2.txt
+    cat /workspace/task-4.txt
+    cat /workspace/task-10.txt
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-workload-3
+  labels:
+    app: anvil-test
+    role: example-workload-3
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+      - name: anvil-extract
+        image: kubesmith/kubesmith:0.1
+        imagePullPolicy: Always
+        command: ['kubesmith', 'anvil', 'extract', '--logtostderr', '-v', '2']
+        env:
+        - name: S3_HOST
+          value: "minio.default.svc"
+        - name: S3_PORT
+          value: "9000"
+        - name: S3_BUCKET_NAME
+          value: "anvil-example"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-secret-key
+        - name: S3_USE_SSL
+          value: "false"
+        - name: LOCAL_PATH
+          value: "/workspace"
+        - name: REMOTE_ARCHIVE_PATHS
+          value: "example-workload-1.tar.gz,example-workload-2.tar.gz"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+      containers:
+      - name: final-task-that-needs-previous-artifacts
+        image: library/bash
+        command: ['bash', '/scripts/workload-script.sh']
+        volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+        - name: workspace
+          mountPath: /workspace
+      volumes:
+      - name: scripts
+        configMap:
+          name: example-workload-3
+      - name: workspace
+        emptyDir: {}
+      - name: artifacts
+        emptyDir: {}

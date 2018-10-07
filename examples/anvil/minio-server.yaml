@@ -1,0 +1,57 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  labels:
+    app: anvil-test
+    role: minio
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+  selector:
+    app: anvil-test
+    role: minio
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: minio
+  labels:
+    app: anvil-test
+    role: minio
+spec:
+  replicas: 1
+  minReadySeconds: 5
+  template:
+    metadata:
+      labels:
+        app: anvil-test
+        role: minio
+    spec:
+      containers:
+      - name: minio
+        image: minio/minio
+        imagePullPolicy: IfNotPresent
+        command: ['minio', 'server', '/data']
+        env:
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-access-key
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-secret-key
+        ports:
+        - containerPort: 9000
+        volumeMounts:
+        - name: "storage"
+          mountPath: "/data"
+      volumes:
+      - name: storage
+        emptyDir: {}
