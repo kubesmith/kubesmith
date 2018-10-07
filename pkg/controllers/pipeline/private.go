@@ -12,7 +12,7 @@ import (
 func (c *PipelineController) pipelineHasWork(pipeline *v1.Pipeline) bool {
 	//
 
-	return false
+	return true
 }
 
 func (c *PipelineController) processPipeline(key string) error {

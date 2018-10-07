@@ -5,7 +5,6 @@ metadata:
   namespace: kubesmith
 spec:
   workspace:
-    base: /go
     path: src/github.com/carldanley/test-repo
 
   environment:
@@ -96,59 +95,17 @@ spec:
     secrets:
     - kube_config
 
-state:
-  metadata:
-    totalStages: 5
-    totalJobs: 6
-    stageIndex: 3
-    phase: running
-    startTime: 2018-11-04T01:00:00Z
-    endTime: null
-  stages:
-  - index: 1
-    jobs:
-    - index: 1
-      resource:
-        name: job-1
-        namespace: default
-      startTime: 2018-11-04T01:00:09Z
-      endTime: 2018-11-04T01:01:29Z
-  - index: 2
-    jobs:
-    - index: 2
-      resource:
-        name: job-2
-        namespace: default
-      startTime: 2018-11-04T01:02:09Z
-      endTime: 2018-11-04T01:03:29Z
-  - index: 3
-    jobs:
-    - index: 3
-      resource:
-        name: job-3
-        namespace: default
-      startTime: 2018-11-04T01:04:09Z
-      endTime: 2018-11-04T01:05:29Z
-    - index: 4
-      resource:
-        name: job-4
-        namespace: default
-      startTime: 2018-11-04T01:04:09Z
-      endTime: null
-  - index: 4
-    jobs:
-    - index: 5
-      resource:
-        name: job-5
-        namespace: default
-      startTime: null
-      endTime: null
-  - index: 5
-    jobs:
-    - index: 6
-      resource:
-        name: job-6
-        namespace: default
-      startTime: null
-      endTime: null
-
+# status:
+#   stageIndex: 0
+#   phase: Queued
+#   startTime: 2018-11-04T01:00:00Z
+#   endTime: null
+#   stages:
+#   - index: 1
+#     jobs:
+#     - index: 1
+#       resource:
+#         name: job-1
+#         namespace: default
+#       startTime: 2018-11-04T01:00:09Z
+#       endTime: 2018-11-04T01:01:29Z
