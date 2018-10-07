@@ -1,11 +1,17 @@
 package extract
 
 import (
+	"fmt"
 	"os"
+	"path"
+	"strings"
 
-	"github.com/davecgh/go-spew/spew"
+	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/client"
+	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
+	"github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
+	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -30,21 +36,78 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
+	// ensure the local path exists
+	glog.V(1).Infoln("Ensuring local file path exists...")
+	if err := os.MkdirAll(o.LocalPath, os.ModePerm); err != nil {
+		return err
+	}
+
+	// make sure the remote archives exist before continuing
+	glog.V(1).Infoln("Ensuring remote archives exist...")
+	for _, file := range o.GetRemoteArchivePaths() {
+		exists, err := o.S3.client.FileExists(o.S3.BucketName, file)
+
+		if err != nil {
+			return err
+		} else if !exists {
+			glog.Exitf("Remote file s3://%s/%s does not exist", o.S3.BucketName, file)
+		} else {
+			glog.V(1).Infof("Found s3://%s/%s", o.S3.BucketName, file)
+		}
+	}
+
 	return nil
 }
 
 func (o *Options) Complete(args []string, f client.Factory) error {
-	client, err := f.Client()
+	s3Client, err := s3.NewS3Client(o.S3.Host, o.S3.Port, o.S3.AccessKey, o.S3.SecretKey, o.S3.UseSSL)
 	if err != nil {
 		return err
 	}
 
-	o.client = client
+	o.S3.client = s3Client
 	return nil
 }
 
-func (o *Options) Run(c *cobra.Command, f client.Factory) error {
-	spew.Dump(o.S3)
+func (o *Options) GetRemoteArchivePaths() []string {
+	paths := []string{}
+	files := strings.Split(o.RemoteArchivePaths, ",")
 
+	for _, file := range files {
+		file = strings.TrimSpace(file)
+		paths = append(paths, file)
+	}
+
+	return paths
+}
+
+func (o *Options) Run(c *cobra.Command, f client.Factory) error {
+	// download the archive files and extract them to the local file path
+	for _, remoteFilePath := range o.GetRemoteArchivePaths() {
+		localFilePath := fmt.Sprintf("%s%s%s", os.TempDir(), uuid.NewV4(), path.Ext(remoteFilePath))
+
+		// download the archive first
+		glog.V(1).Infof("Downloading file from s3://%s/%s to %s ... ", o.S3.BucketName, remoteFilePath, localFilePath)
+		if err := o.S3.client.DownloadFile(o.S3.BucketName, remoteFilePath, localFilePath); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		// now, extract the archive to our localFilePath
+		glog.V(1).Infoln("Downloaded; extracting archive...")
+		if err := archive.ExtractArchive(localFilePath, o.LocalPath); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		// finally, remove the downloaded archive
+		glog.V(1).Infoln("Extracted; cleaning up downloaded archive...")
+		if err := os.Remove(localFilePath); err != nil {
+			fmt.Printf("Could not clean up downloaded archive at %s ...\n", localFilePath)
+		}
+	}
+
+	// finally, we're done!
+	glog.V(1).Infof("Successfully extracted remote file archives to %s!", o.LocalPath)
 	return nil
 }

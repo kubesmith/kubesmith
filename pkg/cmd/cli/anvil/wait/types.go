@@ -1,14 +1,12 @@
 package wait
 
-import kubesmithClient "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
+import "github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
 
 type Options struct {
 	S3            OptionsS3
 	FlagFile      OptionsFlagFile
 	ArtifactPaths string
 	ArchiveFile   OptionsArchiveFile
-
-	client kubesmithClient.Interface
 }
 
 type OptionsS3 struct {
@@ -18,6 +16,8 @@ type OptionsS3 struct {
 	SecretKey  string
 	BucketName string
 	UseSSL     bool
+
+	client *s3.S3Client
 }
 
 type OptionsFlagFile struct {

@@ -74,12 +74,12 @@ func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) er
 }
 
 func (o *Options) Complete(args []string, f client.Factory) error {
-	client, err := f.Client()
+	s3Client, err := s3.NewS3Client(o.S3.Host, o.S3.Port, o.S3.AccessKey, o.S3.SecretKey, o.S3.UseSSL)
 	if err != nil {
 		return err
 	}
 
-	o.client = client
+	o.S3.client = s3Client
 	return nil
 }
 
@@ -124,15 +124,9 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 		glog.Exit(err)
 	}
 
-	// create a new s3 client
-	s3Client, err := s3.NewS3Client(o.S3.Host, o.S3.Port, o.S3.AccessKey, o.S3.SecretKey, o.S3.UseSSL)
-	if err != nil {
-		return err
-	}
-
 	// upload the compressed tarball to s3
 	glog.V(1).Infoln("Compressed tarball; Uploading to S3...")
-	if err := s3Client.UploadFileToBucket(filePath, o.S3.BucketName); err != nil {
+	if err := o.S3.client.UploadFileToBucket(filePath, o.S3.BucketName); err != nil {
 		glog.V(1).Infoln("Could not upload artifacts to S3...")
 		glog.Exit(err)
 	}

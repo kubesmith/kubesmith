@@ -26,7 +26,5 @@ func NewCommand(f client.Factory) *cobra.Command {
 }
 
 func NewOptions() *Options {
-	return &Options{
-		S3: OptionsS3{},
-	}
+	return &Options{}
 }
