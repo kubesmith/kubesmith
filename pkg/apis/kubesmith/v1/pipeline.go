@@ -30,4 +30,6 @@ type Pipeline struct {
 type PipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
+
+	Items []Pipeline `json:"items"`
 }

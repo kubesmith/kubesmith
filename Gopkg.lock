@@ -492,7 +492,7 @@
   version = "kubernetes-1.11.0"
 
 [[projects]]
-  digest = "1:b8509f91be64147570516a1da9f16f30addebae75744064a7bc0b52afe82f20c"
+  digest = "1:9ee26033a489913fa2da53af80ea28ced05e6393a47c15d4022f6951624641ed"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -553,6 +553,7 @@
     "util/homedir",
     "util/integer",
     "util/retry",
+    "util/workqueue",
   ]
   pruneopts = "UT"
   revision = "7d04d0e2a0a1a4d4a1cd6baa432a2301492e4e65"
@@ -575,6 +576,7 @@
     "github.com/minio/minio-go",
     "github.com/pkg/errors",
     "github.com/satori/go.uuid",
+    "github.com/sirupsen/logrus",
     "github.com/spf13/cobra",
     "github.com/spf13/pflag",
     "golang.org/x/net/context",
@@ -586,6 +588,7 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/wait",
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
@@ -595,6 +598,7 @@
     "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
     "k8s.io/client-go/util/flowcontrol",
+    "k8s.io/client-go/util/workqueue",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

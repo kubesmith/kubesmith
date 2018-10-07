@@ -37,13 +37,13 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
 	// ensure the local path exists
-	glog.V(1).Infoln("Ensuring local file path exists...")
+	glog.V(1).Info("Ensuring local file path exists...")
 	if err := os.MkdirAll(o.LocalPath, os.ModePerm); err != nil {
 		return err
 	}
 
 	// make sure the remote archives exist before continuing
-	glog.V(1).Infoln("Ensuring remote archives exist...")
+	glog.V(1).Info("Ensuring remote archives exist...")
 	for _, file := range o.GetRemoteArchivePaths() {
 		exists, err := o.S3.client.FileExists(o.S3.BucketName, file)
 
@@ -94,14 +94,14 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 		}
 
 		// now, extract the archive to our localFilePath
-		glog.V(1).Infoln("Downloaded; extracting archive...")
+		glog.V(1).Info("Downloaded; extracting archive...")
 		if err := archive.ExtractArchive(localFilePath, o.LocalPath); err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
 		// finally, remove the downloaded archive
-		glog.V(1).Infoln("Extracted; cleaning up downloaded archive...")
+		glog.V(1).Info("Extracted; cleaning up downloaded archive...")
 		if err := os.Remove(localFilePath); err != nil {
 			fmt.Printf("Could not clean up downloaded archive at %s ...\n", localFilePath)
 		}

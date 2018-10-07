@@ -108,7 +108,7 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 	if created := <-flagFileCreated; !created {
 		glog.Exitln("Flag file was not created in time")
 	}
-	glog.V(1).Infoln("Flag file detected! Detecting artifacts...")
+	glog.V(1).Info("Flag file detected! Detecting artifacts...")
 
 	// detect any artifacts that were expected to be created
 	detectedArtifacts := artifacts.DetectFromCSV(o.ArtifactPaths)
@@ -125,19 +125,19 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 	}
 
 	// upload the compressed tarball to s3
-	glog.V(1).Infoln("Compressed tarball; Uploading to S3...")
+	glog.V(1).Info("Compressed tarball; Uploading to S3...")
 	if err := o.S3.client.UploadFileToBucket(filePath, o.S3.BucketName); err != nil {
-		glog.V(1).Infoln("Could not upload artifacts to S3...")
+		glog.V(1).Info("Could not upload artifacts to S3...")
 		glog.Exit(err)
 	}
 
 	// cleanup!
-	glog.V(1).Infoln("Deleting local archive to cleanup...")
+	glog.V(1).Info("Deleting local archive to cleanup...")
 	if err := os.Remove(filePath); err != nil {
 		glog.Infof("Could not clean up local archive at %s ...\n", filePath)
 	}
 
 	// finally... we're done!
-	glog.V(1).Infoln("Successfully uploaded!")
+	glog.V(1).Info("Successfully uploaded!")
 	return nil
 }
