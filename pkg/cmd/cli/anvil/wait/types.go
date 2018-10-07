@@ -6,7 +6,7 @@ type Options struct {
 	S3            OptionsS3
 	FlagFile      OptionsFlagFile
 	ArtifactPaths string
-	Archive       OptionsArchive
+	ArchiveFile   OptionsArchiveFile
 
 	client kubesmithClient.Interface
 }
@@ -23,9 +23,10 @@ type OptionsS3 struct {
 type OptionsFlagFile struct {
 	Path          string
 	WatchInterval int
+	WatchTimeout  int
 }
 
-type OptionsArchive struct {
-	FileName string
-	FilePath string
+type OptionsArchiveFile struct {
+	Name string
+	Path string
 }

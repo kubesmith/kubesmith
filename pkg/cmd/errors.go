@@ -3,14 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"os"
+
+	"github.com/golang/glog"
 )
 
 func CheckError(err error) {
 	if err != nil {
 		if err != context.Canceled {
-			fmt.Fprintf(os.Stderr, fmt.Sprintf("An error occurred: %v\n", err))
+			glog.Exit(fmt.Errorf("An error occurred: %v", err))
 		}
-		os.Exit(1)
 	}
 }
