@@ -11,9 +11,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func NewPipelineController(pipelineClient api.PipelinesGetter, pipelineInformer informers.PipelineInformer) controllers.Interface {
+func NewPipelineController(namespace string, pipelineClient api.PipelinesGetter, pipelineInformer informers.PipelineInformer) controllers.Interface {
 	c := &PipelineController{
 		GenericController: generic.NewGenericController("pipeline"),
+		namespace:         namespace,
 		pipelineLister:    pipelineInformer.Lister(),
 		pipelineClient:    pipelineClient,
 		clock:             &clock.RealClock{},
@@ -28,11 +29,16 @@ func NewPipelineController(pipelineClient api.PipelinesGetter, pipelineInformer 
 	pipelineInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				// TODO: FILTER PIPELINES TO ONLY RELEVANT ONES (NO RUNNING OR FINISHED)
+				pipeline := obj.(*v1.Pipeline)
+
 				key, err := cache.MetaNamespaceKeyFunc(obj)
 				if err != nil {
-					pipeline := obj.(*v1.Pipeline)
 					glog.Errorf("Error creating queue key, item not added to queue; name: %s", pipeline.Name)
+					return
+				}
+
+				if !c.pipelineHasWork(pipeline) {
+					glog.Errorf("Pipeline does not have work; skipping: %s", pipeline.Name)
 					return
 				}
 

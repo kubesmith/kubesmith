@@ -1,23 +1,16 @@
 package server
 
 import (
-	"context"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
-
-	"github.com/golang/glog"
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/client"
-	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline"
-	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
+	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"k8s.io/client-go/tools/cache"
 )
 
 func (o *Options) BindFlags(flags *pflag.FlagSet) {
-	//
+	flags.StringVar(&o.Namespace, "namespace", "", "The namespace where this forge server will run")
+	env.BindEnvToFlag("namespace", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
@@ -37,44 +30,24 @@ func (o *Options) Complete(args []string, f client.Factory) error {
 	}
 	o.kubeClient = kubeClient
 
+	if o.Namespace == "" {
+		ns, err := getNamespaceFromServiceAccount()
+		if err == nil {
+			o.Namespace = ns
+		} else {
+			o.Namespace = api.DefaultNamespace
+		}
+	}
+
 	return nil
 }
 
 func (o *Options) Run(c *cobra.Command, f client.Factory) error {
-	// TODO: REWORK ALL OF THIS - JUST TESTING THINGS NOW
-	var wg sync.WaitGroup
-	ctx, cancelFunc := context.WithCancel(context.Background())
+	server := NewServer(o)
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	go func() {
-		sig := <-sigs
-		glog.Infof("Received signal %s, shutting down", sig)
-		cancelFunc()
-	}()
-
-	sharedInformerFactory := informers.NewSharedInformerFactoryWithOptions(o.client, 0, informers.WithNamespace("kubesmith"))
-	pipelineController := pipeline.NewPipelineController(
-		o.client.KubesmithV1(),
-		sharedInformerFactory.Kubesmith().V1().Pipelines(),
-	)
-
-	wg.Add(1)
-	go func() {
-		pipelineController.Run(ctx, 1)
-		wg.Done()
-	}()
-
-	// SHARED INFORMERS HAVE TO BE STARTED AFTER ALL CONTROLLERS
-	go sharedInformerFactory.Start(ctx.Done())
-
-	cache.WaitForCacheSync(ctx.Done(), sharedInformerFactory.Kubesmith().V1().Pipelines().Informer().HasSynced)
-
-	<-ctx.Done()
-
-	glog.Info("Waiting for all controllers to shut down gracefully")
-	wg.Wait()
+	if err := server.run(); err != nil {
+		return err
+	}
 
 	return nil
 }

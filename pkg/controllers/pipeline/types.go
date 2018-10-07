@@ -10,6 +10,7 @@ import (
 type PipelineController struct {
 	*generic.GenericController
 
+	namespace      string
 	pipelineLister listers.PipelineLister
 	pipelineClient api.PipelinesGetter
 	clock          clock.Clock
