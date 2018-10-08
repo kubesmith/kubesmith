@@ -11,6 +11,8 @@ import (
 func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.Namespace, "namespace", "", "The namespace where this forge server will run")
 	env.BindEnvToFlag("namespace", flags)
+	flags.IntVar(&o.MaxRunningPipelines, "max-running-pipelines", 3, "The maximum number of pipelines that can run in this namespace at any given time")
+	env.BindEnvToFlag("max-running-pipelines", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {

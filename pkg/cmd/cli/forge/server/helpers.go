@@ -53,6 +53,8 @@ func NewServer(o *Options) *Server {
 	sharedInformerFactory := informers.NewSharedInformerFactoryWithOptions(o.client, 0, informers.WithNamespace(o.Namespace))
 	pipelineController := pipeline.NewPipelineController(
 		o.Namespace,
+		o.MaxRunningPipelines,
+		o.kubeClient,
 		o.client.KubesmithV1(),
 		sharedInformerFactory.Kubesmith().V1().Pipelines(),
 	)

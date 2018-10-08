@@ -45,16 +45,19 @@ const (
 	PipelinePhaseQueued    = "Queued"
 	PipelinePhaseRunning   = "Running"
 	PipelinePhaseCompleted = "Completed"
+	PipelinePhaseFailed    = "Failed"
+	PipelinePhaseEmpty     = ""
 )
 
 type PipelinePhase string
 
 type PipelineStatus struct {
-	StageIndex int                   `json:"stageIndex"`
-	Phase      PipelinePhase         `json:"phase"`
-	StartTime  metav1.Time           `json:"startTime"`
-	EndTime    metav1.Time           `json:"endTime"`
-	Stages     []PipelineStatusStage `json:"stages"`
+	StageIndex  int                   `json:"stageIndex"`
+	Phase       PipelinePhase         `json:"phase"`
+	StartTime   metav1.Time           `json:"startTime"`
+	EndTime     metav1.Time           `json:"endTime"`
+	Stages      []PipelineStatusStage `json:"stages"`
+	LastUpdated metav1.Time           `json:"lastUpdate"`
 }
 
 type PipelineStatusStage struct {

@@ -334,6 +334,7 @@ func (in *PipelineStatus) DeepCopyInto(out *PipelineStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	in.LastUpdated.DeepCopyInto(&out.LastUpdated)
 	return
 }
 

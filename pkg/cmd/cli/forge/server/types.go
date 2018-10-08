@@ -10,7 +10,8 @@ import (
 )
 
 type Options struct {
-	Namespace string
+	Namespace           string
+	MaxRunningPipelines int
 
 	client     kubesmithClient.Interface
 	kubeClient kubernetes.Interface

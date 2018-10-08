@@ -8,16 +8,25 @@ import (
 	api "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
-func NewPipelineController(namespace string, pipelineClient api.PipelinesGetter, pipelineInformer informers.PipelineInformer) controllers.Interface {
+func NewPipelineController(
+	namespace string,
+	maxRunningPipelines int,
+	kubeClient kubernetes.Interface,
+	pipelineClient api.PipelinesGetter,
+	pipelineInformer informers.PipelineInformer,
+) controllers.Interface {
 	c := &PipelineController{
-		GenericController: generic.NewGenericController("pipeline"),
-		namespace:         namespace,
-		pipelineLister:    pipelineInformer.Lister(),
-		pipelineClient:    pipelineClient,
-		clock:             &clock.RealClock{},
+		GenericController:   generic.NewGenericController("pipeline"),
+		namespace:           namespace,
+		maxRunningPipelines: maxRunningPipelines,
+		pipelineLister:      pipelineInformer.Lister(),
+		pipelineClient:      pipelineClient,
+		kubeClient:          kubeClient,
+		clock:               &clock.RealClock{},
 	}
 
 	c.SyncHandler = c.processPipeline
