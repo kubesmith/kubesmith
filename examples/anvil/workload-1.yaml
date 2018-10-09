@@ -9,6 +9,7 @@ metadata:
 data:
   workload-script.sh: |
     #!/bin/bash
+
     # do some tasks
     for i in {0..10}
     do
@@ -17,10 +18,13 @@ data:
       echo "Waiting 1 second..."
       sleep 1
     done
+
     # show the status
     ls -la /workspace
+
     # let logs know when we're done
     echo "Done!"
+
     # write the IPC flag file
     touch /workspace/done-doing-work
 ---
