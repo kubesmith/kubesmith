@@ -5,6 +5,7 @@ import (
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
+	"github.com/golang/glog"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -21,6 +22,29 @@ func (p *PipelineHelper) processFirstStage() error {
 	//		- create all of the jobs to launch
 	// actualize the resources created from the previous step
 	// sit back and relax :)
+
+	// mark the pipeline as "Running"
+	glog.V(1).Info("setting pipeline to running...")
+	if err := p.SetPipelineStatus(api.PipelinePhaseRunning); err != nil {
+		glog.V(1).Info("could not set pipeline to running; carrying on")
+		return err
+	}
+
+	// bootstrap minio server
+	glog.V(1).Info("ensuring the minio server (and required resources) for this pipeline has been created...")
+	if err := p.createMinioServer(); err != nil {
+		glog.V(1).Info("could not ensure the minio server is running; setting the pipeline back to queued...")
+		if err := p.SetPipelineStatus(api.PipelinePhaseQueued); err != nil {
+			glog.V(1).Info("could not set the pipeline back to queued")
+			return err
+		}
+
+		return err
+	}
+
+	// create the pipeline jobs in the system
+
+	// run the pipeline jobs
 
 	return nil
 }

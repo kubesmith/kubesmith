@@ -6,10 +6,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetMinioDeployment(labels map[string]string, secret corev1.Secret) appsv1.Deployment {
+func GetMinioDeployment(name string, labels map[string]string, secret corev1.Secret) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "minio-server-" + generateRandomString(8),
+			Name:   name,
 			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{

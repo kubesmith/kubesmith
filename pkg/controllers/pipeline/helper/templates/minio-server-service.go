@@ -6,10 +6,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetMinioService(labels map[string]string) corev1.Service {
+func GetMinioService(name string, labels map[string]string) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   "minio-" + generateRandomString(8),
+			Name:   name,
 			Labels: labels,
 		},
 		Spec: corev1.ServiceSpec{
