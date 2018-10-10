@@ -16,13 +16,6 @@ func (p *PipelineHelper) canRunAnotherPipeline() error {
 }
 
 func (p *PipelineHelper) processFirstStage() error {
-	// mark the pipeline as running
-	// create all of the resources we will need to bootstrap the pipeline
-	// 		- create minio server (secret, deployment, service)
-	//		- create all of the jobs to launch
-	// actualize the resources created from the previous step
-	// sit back and relax :)
-
 	// mark the pipeline as "Running"
 	glog.V(1).Info("setting pipeline to running...")
 	if err := p.SetPipelineStatus(api.PipelinePhaseRunning); err != nil {
@@ -43,20 +36,27 @@ func (p *PipelineHelper) processFirstStage() error {
 	}
 
 	// create the pipeline jobs in the system
-
-	// run the pipeline jobs
+	glog.V(1).Info("running pipeline jobs for current stage")
+	if err := p.runPipelineJobsForCurrentStage(); err != nil {
+		glog.V(1).Info("could not run pipeline jobs for current stage")
+		return err
+	}
+	glog.V(1).Info("ran pipeline jobs for current stage!")
 
 	return nil
 }
 
 func (p *PipelineHelper) processRunningPipeline() error {
+	glog.V(1).Info("todo: processing running pipeline...")
 	return nil
 }
 
-func (p *PipelineHelper) getJobsToRun() []api.PipelineSpecJob {
-	jobs := []api.PipelineSpecJob{}
+func (p *PipelineHelper) processFinishedPipeline() error {
+	// make sure any resources associated to this pipeline's execution are
+	// cleaned up
 
-	return jobs
+	glog.V(1).Info("todo: processing finished pipeline")
+	return nil
 }
 
 func (p *PipelineHelper) patchPipeline() error {
@@ -77,7 +77,7 @@ func (p *PipelineHelper) patchPipeline() error {
 		return errors.Wrap(err, "error creating json merge patch for pipeline")
 	}
 
-	res, err := p.pipelineClient.Pipelines(p.cachedPipeline.Namespace).Patch(p.cachedPipeline.Name, types.MergePatchType, patchBytes)
+	res, err := p.kubesmithClient.Pipelines(p.cachedPipeline.Namespace).Patch(p.cachedPipeline.Name, types.MergePatchType, patchBytes)
 	if err != nil {
 		return errors.Wrap(err, "error patching pipeline")
 	}

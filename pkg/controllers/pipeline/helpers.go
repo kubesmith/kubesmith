@@ -5,7 +5,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
-	api "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -15,16 +15,15 @@ func NewPipelineController(
 	namespace string,
 	maxRunningPipelines int,
 	kubeClient kubernetes.Interface,
-	pipelineClient api.PipelinesGetter,
+	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	pipelineInformer informers.PipelineInformer,
 ) controllers.Interface {
 	c := &PipelineController{
 		GenericController:   generic.NewGenericController("pipeline"),
 		namespace:           namespace,
 		maxRunningPipelines: maxRunningPipelines,
-		pipelineLister:      pipelineInformer.Lister(),
-		pipelineClient:      pipelineClient,
 		kubeClient:          kubeClient,
+		kubesmithClient:     kubesmithClient,
 	}
 
 	c.SyncHandler = c.processPipeline

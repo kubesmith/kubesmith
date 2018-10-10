@@ -6,8 +6,7 @@ import (
 	"fmt"
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
-	genApi "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
-	listers "github.com/kubesmith/kubesmith/pkg/generated/listers/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -33,9 +32,8 @@ func GetPipelineResourceLabels(pipeline *api.Pipeline) map[string]string {
 
 func NewPipelineHelper(
 	pipeline *api.Pipeline,
-	pipelineLister listers.PipelineLister,
-	pipelineClient genApi.PipelinesGetter,
 	kubeClient kubernetes.Interface,
+	kubesmithClient kubesmithv1.KubesmithV1Interface,
 ) *PipelineHelper {
 	if pipeline == nil {
 		// developer error
@@ -49,8 +47,7 @@ func NewPipelineHelper(
 		resourcePrefix: GetPipelineResourcePrefix(pipeline),
 		resourceLabels: GetPipelineResourceLabels(pipeline),
 
-		pipelineLister: pipelineLister,
-		pipelineClient: pipelineClient,
-		kubeClient:     kubeClient,
+		kubeClient:      kubeClient,
+		kubesmithClient: kubesmithClient,
 	}
 }

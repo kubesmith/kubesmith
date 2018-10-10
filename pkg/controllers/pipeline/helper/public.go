@@ -18,6 +18,10 @@ func (p *PipelineHelper) Execute() error {
 		if err := p.processRunningPipeline(); err != nil {
 			return err
 		}
+	case api.PipelinePhaseCompleted, api.PipelinePhaseFailed:
+		if err := p.processFinishedPipeline(); err != nil {
+			return err
+		}
 	}
 
 	return nil
