@@ -21,13 +21,17 @@ func (p *PipelineHelper) createMinioServerSecret() error {
 			if err != nil {
 				return errors.Wrap(err, "could not create minio server secret")
 			}
+
+			glog.V(1).Info("minio server secret created!")
+			p.minioSecret = secret
+			return nil
 		}
 
 		return errors.Wrap(err, "could not get existing minio server secret")
 	}
 
+	glog.V(1).Info("minio server secret already exists!")
 	p.minioSecret = secret
-
 	return nil
 }
 
@@ -46,13 +50,17 @@ func (p *PipelineHelper) createMinioServerDeployment() error {
 			if err != nil {
 				return errors.Wrap(err, "could not create minio server deployment")
 			}
+
+			glog.V(1).Info("minio server deployment created!")
+			p.minioDeployment = deployment
+			return nil
 		}
 
 		return errors.Wrap(err, "could not get existing minio server deployment")
 	}
 
+	glog.V(1).Info("minio server deployment already exists!")
 	p.minioDeployment = deployment
-
 	return nil
 }
 
@@ -67,13 +75,17 @@ func (p *PipelineHelper) createMinioServerService() error {
 			if err != nil {
 				return errors.Wrap(err, "could not create minio server service")
 			}
+
+			glog.V(1).Info("minio server service created!")
+			p.minioService = service
+			return nil
 		}
 
 		return errors.Wrap(err, "could not get existing minio server service")
 	}
 
+	glog.V(1).Info("minio server service already exists!")
 	p.minioService = service
-
 	return nil
 }
 
