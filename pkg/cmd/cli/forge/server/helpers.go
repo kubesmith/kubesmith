@@ -14,6 +14,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/cmd"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -49,11 +50,15 @@ func NewServer(o *Options) *Server {
 		cancelContext()
 	}()
 
+	// setup a logger for this pipeline controller
+	logger := logrus.New()
+
 	// setup some pipeline helpers
 	sharedInformerFactory := informers.NewSharedInformerFactoryWithOptions(o.client, 0, informers.WithNamespace(o.Namespace))
 	pipelineController := pipeline.NewPipelineController(
 		o.Namespace,
 		o.MaxRunningPipelines,
+		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		sharedInformerFactory.Kubesmith().V1().Pipelines(),
@@ -63,6 +68,7 @@ func NewServer(o *Options) *Server {
 	return &Server{
 		options:    o,
 		client:     o.client,
+		logger:     logger,
 		kubeClient: o.kubeClient,
 		namespace:  o.Namespace,
 

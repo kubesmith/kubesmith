@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,7 +14,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 			Labels: labels,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:        int32Ptr(1),
+			Replicas:        utils.Int32Ptr(1),
 			MinReadySeconds: 5,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,

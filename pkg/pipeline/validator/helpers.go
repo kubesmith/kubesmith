@@ -1,4 +1,4 @@
-package helper
+package validator
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 )
 
-func (p *PipelineHelper) validateEnvironmentVariables(vars []string) error {
+func ValidateEnvironmentVariables(vars []string) error {
 	for _, env := range vars {
 		parts := strings.Split(env, "=")
 		total := len(parts)
@@ -22,7 +22,7 @@ func (p *PipelineHelper) validateEnvironmentVariables(vars []string) error {
 	return nil
 }
 
-func (p *PipelineHelper) validateArtifacts(artifacts []api.PipelineSpecJobArtifact) error {
+func ValidateArtifacts(artifacts []api.PipelineSpecJobArtifact) error {
 	for _, artifact := range artifacts {
 		if artifact.Name == "" {
 			return errors.New("artifact name must not be empty")
@@ -43,13 +43,13 @@ func (p *PipelineHelper) validateArtifacts(artifacts []api.PipelineSpecJobArtifa
 	return nil
 }
 
-func (p *PipelineHelper) validateTemplates() error {
-	for _, template := range p.pipeline.Spec.Templates {
-		if err := p.validateEnvironmentVariables(template.Environment); err != nil {
+func ValidateTemplates(templates []api.PipelineSpecJobTemplate) error {
+	for _, template := range templates {
+		if err := ValidateEnvironmentVariables(template.Environment); err != nil {
 			return err
 		}
 
-		if err := p.validateArtifacts(template.Artifacts); err != nil {
+		if err := ValidateArtifacts(template.Artifacts); err != nil {
 			return err
 		}
 	}
@@ -57,42 +57,37 @@ func (p *PipelineHelper) validateTemplates() error {
 	return nil
 }
 
-func (p *PipelineHelper) validateStages() error {
-	if len(p.pipeline.Spec.Stages) == 0 {
+func ValidateStages(stages []string) error {
+	if len(stages) == 0 {
 		return errors.New("stages must include at least one value")
 	}
 
 	return nil
 }
 
-func (p *PipelineHelper) validateJobs() error {
-	stages := p.pipeline.Spec.Stages
-	templates := p.pipeline.Spec.Templates
-
-	for _, job := range p.pipeline.Spec.Jobs {
-		newJob := p.expandJobTemplate(job)
-
+func ValidateJobs(jobs []api.PipelineSpecJob, stages []string, templates []api.PipelineSpecJobTemplate) error {
+	for _, job := range jobs {
 		// check the job has a valid name
-		if newJob.Name == "" {
+		if job.Name == "" {
 			return errors.New("job name must not be empty")
 		}
 
 		// check the job has an image specified
-		if newJob.Image == "" {
+		if job.Image == "" {
 			return errors.New("job image must not be empty")
 		}
 
 		// todo: validate the image pull secret (check that it exists)
 
 		// check the job has a stage specified
-		if newJob.Stage == "" {
+		if job.Stage == "" {
 			return errors.New("job stage must be specified")
 		}
 
 		// check that the stage for this job is specified
 		foundStage := false
 		for _, stage := range stages {
-			if strings.ToLower(stage) == strings.ToLower(newJob.Stage) {
+			if strings.ToLower(stage) == strings.ToLower(job.Stage) {
 				foundStage = true
 			}
 		}
@@ -102,8 +97,8 @@ func (p *PipelineHelper) validateJobs() error {
 		}
 
 		// check that all of the declared extends exist
-		if len(newJob.Extends) > 0 {
-			for _, extend := range newJob.Extends {
+		if len(job.Extends) > 0 {
+			for _, extend := range job.Extends {
 				foundExtend := false
 
 				for _, extension := range templates {
@@ -119,13 +114,13 @@ func (p *PipelineHelper) validateJobs() error {
 		}
 
 		// check the job has valid environment variables
-		if err := p.validateEnvironmentVariables(newJob.Environment); err != nil {
+		if err := ValidateEnvironmentVariables(job.Environment); err != nil {
 			return err
 		}
 
 		// check that the commands are valid
-		if len(newJob.Commands) > 0 {
-			for _, command := range newJob.Commands {
+		if len(job.Commands) > 0 {
+			for _, command := range job.Commands {
 				if command == "" {
 					return errors.New("job command entry must not be empty")
 				}
@@ -133,7 +128,7 @@ func (p *PipelineHelper) validateJobs() error {
 		}
 
 		// check that the artifacts are valid
-		if err := p.validateArtifacts(newJob.Artifacts); err != nil {
+		if err := ValidateArtifacts(job.Artifacts); err != nil {
 			return err
 		}
 	}

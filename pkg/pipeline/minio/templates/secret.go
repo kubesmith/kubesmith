@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -13,8 +14,8 @@ func GetMinioSecret(name string, labels map[string]string) corev1.Secret {
 			Labels: labels,
 		},
 		StringData: map[string]string{
-			"access-key": generateRandomString(16),
-			"secret-key": generateRandomString(32),
+			"access-key": utils.GenerateRandomString(16),
+			"secret-key": utils.GenerateRandomString(32),
 		},
 	}
 }

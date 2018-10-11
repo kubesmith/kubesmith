@@ -6,6 +6,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	kubesmithClient "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
+	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -20,6 +21,7 @@ type Options struct {
 type Server struct {
 	options    *Options
 	client     kubesmithClient.Interface
+	logger     *logrus.Logger
 	kubeClient kubernetes.Interface
 	namespace  string
 

@@ -7,6 +7,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
+	"github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -14,6 +15,7 @@ import (
 func NewPipelineController(
 	namespace string,
 	maxRunningPipelines int,
+	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	pipelineInformer informers.PipelineInformer,
@@ -22,6 +24,7 @@ func NewPipelineController(
 		GenericController:   generic.NewGenericController("pipeline"),
 		namespace:           namespace,
 		maxRunningPipelines: maxRunningPipelines,
+		logger:              logger,
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
 	}

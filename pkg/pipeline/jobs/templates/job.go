@@ -4,47 +4,42 @@ import (
 	"fmt"
 	"strings"
 
-	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func BuildJobFromPipelineJob(
-	pipeline *api.Pipeline,
-	jobIndex int,
-	job api.PipelineSpecJob,
-	configMap corev1.ConfigMap,
-	minioService corev1.Service,
-	minioSecret corev1.Secret,
+	labels map[string]string,
+	pipelineName string,
+	jobName, jobImage string,
+	archiveFileName string,
+	minioServiceHost, minioServerSecretName string,
+	artifactPaths []string,
+	commands []string,
 ) batchv1.Job {
-	artifactPaths := []string{}
-	flagFileName := ""
-
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "pipeline-job-" + generateRandomString(8),
-			Labels: map[string]string{
-				"PipelineName": pipeline.Name,
-			},
+			Name:   jobName,
+			Labels: labels,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: int32Ptr(1),
+			BackoffLimit: utils.Int32Ptr(1),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: "Never",
 					Containers: []corev1.Container{
 						corev1.Container{
-							Name:  job.Name,
-							Image: job.Image,
+							Name:  "pipeline-job",
+							Image: jobImage,
 							Command: []string{
-								"bash", "/kubesmith/scripts/job.sh",
+								"/bin/sh", "-c",
+							},
+							Args: []string{
+								strings.Join(commands, "; ") + ";",
 							},
 							VolumeMounts: []corev1.VolumeMount{
-								corev1.VolumeMount{
-									Name:      "scripts",
-									MountPath: "/kubesmith/scripts",
-								},
 								corev1.VolumeMount{
 									Name:      "workspace",
 									MountPath: "/kubesmith/workspace",
@@ -70,7 +65,7 @@ func BuildJobFromPipelineJob(
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
 									Name:  "S3_HOST",
-									Value: fmt.Sprintf("%s.%s.svc", minioService.Name, minioService.Namespace),
+									Value: minioServiceHost,
 								},
 								corev1.EnvVar{
 									Name:  "S3_PORT",
@@ -78,14 +73,14 @@ func BuildJobFromPipelineJob(
 								},
 								corev1.EnvVar{
 									Name:  "S3_BUCKET_NAME",
-									Value: pipeline.Name,
+									Value: pipelineName,
 								},
 								corev1.EnvVar{
 									Name: "S3_ACCESS_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: minioSecret.Name,
+												Name: minioServerSecretName,
 											},
 											Key: "access-key",
 										},
@@ -96,7 +91,7 @@ func BuildJobFromPipelineJob(
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: minioSecret.Name,
+												Name: minioServerSecretName,
 											},
 											Key: "secret-key",
 										},
@@ -108,7 +103,7 @@ func BuildJobFromPipelineJob(
 								},
 								corev1.EnvVar{
 									Name:  "ARCHIVE_FILE_NAME",
-									Value: fmt.Sprintf("artifacts-stage-%d-job-%d.tar.gz", pipeline.Status.StageIndex, jobIndex),
+									Value: archiveFileName,
 								},
 								corev1.EnvVar{
 									Name:  "ARCHIVE_FILE_PATH",
@@ -120,7 +115,7 @@ func BuildJobFromPipelineJob(
 								},
 								corev1.EnvVar{
 									Name:  "FLAG_FILE_PATH",
-									Value: "/kubesmith/workspace/" + flagFileName,
+									Value: fmt.Sprintf("/kubesmith/workspace/%s", pipelineName),
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -136,16 +131,6 @@ func BuildJobFromPipelineJob(
 						},
 					},
 					Volumes: []corev1.Volume{
-						corev1.Volume{
-							Name: "scripts",
-							VolumeSource: corev1.VolumeSource{
-								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: configMap.Name,
-									},
-								},
-							},
-						},
 						corev1.Volume{
 							Name: "workspace",
 							VolumeSource: corev1.VolumeSource{
