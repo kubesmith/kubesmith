@@ -3,8 +3,8 @@ package helper
 import (
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
-	"github.com/pkg/errors"
 )
 
 func (p *PipelineHelper) runPipelineJobsForCurrentStage() error {
@@ -15,13 +15,10 @@ func (p *PipelineHelper) runPipelineJobsForCurrentStage() error {
 	}
 
 	for _, job := range jobsToRun {
-		job, err := p.expandJobTemplate(job)
-		if err != nil {
-			return errors.Wrap(err, "could not expand job template")
-		}
+		newJob := p.expandJobTemplate(job)
 
 		// todo: left off here
-		_ = job
+		spew.Dump(newJob)
 	}
 
 	return nil
@@ -31,20 +28,26 @@ func (p *PipelineHelper) createPipelineJob() error {
 	return nil
 }
 
-func (p *PipelineHelper) expandJobTemplate(job api.PipelineSpecJob) (*api.PipelineSpecJob, error) {
+func (p *PipelineHelper) expandJobTemplate(job api.PipelineSpecJob) *api.PipelineSpecJob {
 	newJob := job.DeepCopy()
 	templates := p.pipeline.Spec.Templates
 	envVars := []string{}
 	artifacts := []api.PipelineSpecJobArtifact{}
 
 	if len(newJob.Extends) == 0 {
-		return newJob, nil
+		return newJob
+	}
+
+	for _, env := range p.pipeline.Spec.Environment {
+		envVars = append(envVars, env)
 	}
 
 	for _, templateName := range newJob.Extends {
 		for _, template := range templates {
 			if strings.ToLower(templateName) == strings.ToLower(template.Name) {
-				newJob.Image = template.Image
+				if template.Image != "" {
+					newJob.Image = template.Image
+				}
 
 				for _, env := range template.Environment {
 					envVars = append(envVars, env)
@@ -74,5 +77,5 @@ func (p *PipelineHelper) expandJobTemplate(job api.PipelineSpecJob) (*api.Pipeli
 	newJob.Environment = envVars
 	newJob.Artifacts = artifacts
 
-	return newJob, nil
+	return newJob
 }

@@ -26,21 +26,29 @@ type PipelineSpecJobTemplate struct {
 }
 
 type PipelineSpecJob struct {
-	Name         string                    `json:"name"`
-	Image        string                    `json:"image"`
-	Stage        string                    `json:"stage"`
-	Extends      []string                  `json:"extends"`
-	Environment  []string                  `json:"environment"`
-	Commands     []string                  `json:"commands"`
-	AllowFailure bool                      `json:"allowFailure"`
-	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
-	OnlyOn       []string                  `json:"onlyOn"`
+	Name            string                    `json:"name"`
+	Image           string                    `json:"image"`
+	ImagePullSecret string                    `json:"imagePullSecret"`
+	Stage           string                    `json:"stage"`
+	Extends         []string                  `json:"extends"`
+	Environment     []string                  `json:"environment"`
+	Commands        []string                  `json:"commands"`
+	AllowFailure    bool                      `json:"allowFailure"`
+	Artifacts       []PipelineSpecJobArtifact `json:"artifacts"`
+	OnlyOn          []string                  `json:"onlyOn"`
 }
 
+const (
+	ArtifactEventOnSuccess = "on-success"
+	ArtifactEventOnFailure = "on-failure"
+)
+
+type ArtifactEventType string
+
 type PipelineSpecJobArtifact struct {
-	Name  string   `json:"name"`
-	When  string   `json:"when"`
-	Paths []string `json:"paths"`
+	Name  string            `json:"name"`
+	When  ArtifactEventType `json:"when"`
+	Paths []string          `json:"paths"`
 }
 
 const (

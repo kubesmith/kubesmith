@@ -1,13 +1,18 @@
 package helper
 
 import (
+	"github.com/golang/glog"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 )
 
 func (p *PipelineHelper) Execute() error {
+	glog.V(1).Info("validating pipeline...")
 	if err := p.Validate(); err != nil {
-		return err
+		glog.V(1).Info("pipeline was invalid; marking as failed")
+		glog.Error(err)
+		return p.SetPipelineStatus(api.PipelinePhaseFailed)
 	}
+	glog.V(1).Info("validated pipeline; processing current stage...")
 
 	switch p.pipeline.Status.Phase {
 	case api.PipelinePhaseEmpty, api.PipelinePhaseQueued:
@@ -28,6 +33,22 @@ func (p *PipelineHelper) Execute() error {
 }
 
 func (p *PipelineHelper) Validate() error {
+	if err := p.validateEnvironmentVariables(p.pipeline.Spec.Environment); err != nil {
+		return err
+	}
+
+	if err := p.validateTemplates(); err != nil {
+		return err
+	}
+
+	if err := p.validateStages(); err != nil {
+		return err
+	}
+
+	if err := p.validateJobs(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
