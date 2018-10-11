@@ -14,7 +14,7 @@ spec:
   - name: default
     image: golang
   - name: new-release
-    only:
+    onlyOn:
     - tags
 
   stages:

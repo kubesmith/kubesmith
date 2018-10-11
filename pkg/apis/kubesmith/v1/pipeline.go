@@ -22,6 +22,7 @@ type PipelineSpecJobTemplate struct {
 	Environment  []string                  `json:"environment"`
 	AllowFailure bool                      `json:"allowFailure"`
 	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
+	OnlyOn       []string                  `json:"onlyOn"`
 }
 
 type PipelineSpecJob struct {
@@ -33,6 +34,7 @@ type PipelineSpecJob struct {
 	Commands     []string                  `json:"commands"`
 	AllowFailure bool                      `json:"allowFailure"`
 	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
+	OnlyOn       []string                  `json:"onlyOn"`
 }
 
 type PipelineSpecJobArtifact struct {

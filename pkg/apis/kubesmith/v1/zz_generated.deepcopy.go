@@ -244,6 +244,11 @@ func (in *PipelineSpecJob) DeepCopyInto(out *PipelineSpecJob) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.OnlyOn != nil {
+		in, out := &in.OnlyOn, &out.OnlyOn
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -292,6 +297,11 @@ func (in *PipelineSpecJobTemplate) DeepCopyInto(out *PipelineSpecJobTemplate) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.OnlyOn != nil {
+		in, out := &in.OnlyOn, &out.OnlyOn
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 	return
 }

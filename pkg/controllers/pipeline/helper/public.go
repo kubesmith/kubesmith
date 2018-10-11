@@ -41,6 +41,7 @@ func (p *PipelineHelper) SetPipelineStatus(status api.PipelinePhase) error {
 		p.pipeline.Status.StageIndex = len(p.pipeline.Spec.Stages)
 	case api.PipelinePhaseRunning:
 		p.pipeline.Status.Phase = api.PipelinePhaseRunning
+		p.pipeline.Status.StageIndex = 1
 	case api.PipelinePhaseQueued:
 		p.pipeline.Status.Phase = api.PipelinePhaseQueued
 		p.pipeline.Status.StageIndex = 0
