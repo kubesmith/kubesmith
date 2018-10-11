@@ -18,9 +18,18 @@ func (p *PipelineExecutor) Validate() error {
 		return err
 	}
 
-	p.logger.Info("todo: expand jobs before validating them")
+	// Why do we expand all of the jobs before validating them?
+	// Because it's possible that a pipeline job doesn't have a resource specified
+	// but maybe the same pipeline job specifies an extension which has that
+	// resource declared.
+	jobs := []api.PipelineSpecJob{}
+	for _, job := range p._cachedPipeline.Spec.Jobs {
+		jobs = append(jobs, *p.expandJobPipeline(job))
+	}
+
+	// lastly, validate the jobs
 	return validator.ValidateJobs(
-		p._cachedPipeline.Spec.Jobs,
+		jobs,
 		p._cachedPipeline.Spec.Stages,
 		p._cachedPipeline.Spec.Templates,
 	)

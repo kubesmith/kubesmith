@@ -137,4 +137,83 @@ func (p *PipelineExecutor) advanceCurrentStageIndex() error {
 	return p.patchPipeline()
 }
 
-//
+func (p *PipelineExecutor) expandJobPipeline(oldJob api.PipelineSpecJob) *api.PipelineSpecJob {
+	job := oldJob.DeepCopy()
+	envVars := []string{}
+	artifacts := []api.PipelineSpecJobArtifact{}
+
+	// if this job doesn't extend anything, we're done
+	if len(job.Extends) == 0 {
+		return job
+	}
+
+	// loop through the pipeline's global environment variables and add them first
+	for _, env := range p._cachedPipeline.Spec.Environment {
+		envVars = append(envVars, env)
+	}
+
+	// loop through the job's specified extensions and use each extension to mutate
+	// the job in the order they were specified
+	for _, templateName := range job.Extends {
+		template, _ := p.getTemplateByName(templateName)
+
+		// if there was no template by that name, keep moving on
+		if template == nil {
+			continue
+		}
+
+		// if the template has an image specified, overwrite the job's image
+		if template.Image != "" {
+			job.Image = template.Image
+		}
+
+		// add the environment variables from this template
+		for _, env := range template.Environment {
+			envVars = append(envVars, env)
+		}
+
+		// add the artifacts from this template (if any were specified)
+		for _, artifact := range template.Artifacts {
+			artifacts = append(artifacts, artifact)
+		}
+
+		// if the template specifies an "OnlyOn" value, overwrite the current one
+		// anyone using "OnlyOn" in a pipeline job needs to understand this isn't an
+		// append but an overwrite
+		if len(template.OnlyOn) > 0 {
+			job.OnlyOn = template.OnlyOn
+		}
+	}
+
+	// now that we've looped through the templates, we have all of the environment
+	// variables and artifacts.
+
+	// if the job had any environment variables specified, add them last (so they
+	// overwrite any previously defined variables)
+	for _, env := range job.Environment {
+		envVars = append(envVars, env)
+	}
+
+	// if the job had any artifacts specified, add them last
+	for _, artifact := range job.Artifacts {
+		artifacts = append(artifacts, artifact)
+	}
+
+	// lastly, set the built environment variables + artifacts
+	job.Environment = envVars
+	job.Artifacts = artifacts
+
+	return job
+}
+
+func (p *PipelineExecutor) getTemplateByName(name string) (*api.PipelineSpecJobTemplate, error) {
+	name = strings.ToLower(name)
+
+	for _, template := range p._cachedPipeline.Spec.Templates {
+		if strings.ToLower(template.Name) == name {
+			return &template, nil
+		}
+	}
+
+	return nil, errors.New("template does not exist")
+}

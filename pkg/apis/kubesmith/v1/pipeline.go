@@ -17,12 +17,11 @@ type PipelineSpecWorkspace struct {
 }
 
 type PipelineSpecJobTemplate struct {
-	Name         string                    `json:"name"`
-	Image        string                    `json:"image"`
-	Environment  []string                  `json:"environment"`
-	AllowFailure bool                      `json:"allowFailure"`
-	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
-	OnlyOn       []string                  `json:"onlyOn"`
+	Name        string                    `json:"name"`
+	Image       string                    `json:"image"`
+	Environment []string                  `json:"environment"`
+	Artifacts   []PipelineSpecJobArtifact `json:"artifacts"`
+	OnlyOn      []string                  `json:"onlyOn"`
 }
 
 type PipelineSpecJob struct {
