@@ -32,21 +32,16 @@ func (p *PipelineExecutor) canRunAnotherPipeline() (bool, error) {
 	return false, nil
 }
 
-// validate the pipeline before doing anything
-// mark the pipeline as running
-// bootstrap minio server
-// 		if any issues, mark the pipeline as queued again
-// wait for minio server to be "running"
-// create the pipeline jobs in the system
-func (p *PipelineExecutor) processQueuedPipeline() error {
+func (p *PipelineExecutor) processEmptyPhasePipeline() error {
+	// first, validate the pipeline before doing anything
 	p.logger.Info("validating pipeline...")
 	if err := p.Validate(); err != nil {
-		p.logger.Info("could not validate pipeline")
+		p.logger.Error("could not validate pipeline")
 		p.logger.Error(err)
 
 		p.logger.Info("marking pipeline as failed")
-		if err := p.SetPipelineStatus(api.PipelinePhaseFailed); err != nil {
-			p.logger.Info("could not mark pipeline as failed")
+		if err := p.SetPipelineToFailed(err.Error()); err != nil {
+			p.logger.Error("could not mark pipeline as failed")
 			p.logger.Error(err)
 		}
 
@@ -54,14 +49,75 @@ func (p *PipelineExecutor) processQueuedPipeline() error {
 	}
 	p.logger.Info("finished validating pipeline")
 
+	// lastly, set the pipeline status to queued
+	p.logger.Info("marking pipeline as queued...")
+	if err := p.SetPipelineToQueued(); err != nil {
+		p.logger.Error("could not set pipeline to running")
+		p.logger.Error(err)
+
+		return err
+	}
+	p.logger.Info("marked pipeline as queued")
+
 	return nil
 }
 
+func (p *PipelineExecutor) processQueuedPipeline() error {
+	// first, validate the pipeline before doing anything
+	p.logger.Info("validating pipeline...")
+	if err := p.Validate(); err != nil {
+		p.logger.Error("could not validate pipeline")
+		p.logger.Error(err)
+
+		p.logger.Info("marking pipeline as failed")
+		if err := p.SetPipelineToFailed(err.Error()); err != nil {
+			p.logger.Error("could not mark pipeline as failed")
+			p.logger.Error(err)
+		}
+
+		return err
+	}
+	p.logger.Info("finished validating pipeline")
+
+	// check to see if we can run another pipeline in this namespace
+	p.logger.Info("checking to see if we can run another pipeline in this namespace")
+	canRunAnotherPipeline, err := p.canRunAnotherPipeline()
+	if err != nil {
+		p.logger.Error("could not check to see if we could run another pipeline")
+		p.logger.Error(err)
+		return err
+	}
+
+	if !canRunAnotherPipeline {
+		// don't do anything, disregard this queue update
+		p.logger.Warn("cannot run another pipeline in this namespace")
+		return nil
+	}
+
+	// next, mark the pipeline as running
+	p.logger.Info("marking pipeline as running...")
+	if err := p.SetPipelineToRunning(); err != nil {
+		p.logger.Error("could not set pipeline to running")
+		p.logger.Error(err)
+
+		return err
+	}
+	p.logger.Info("marked pipeline as running")
+
+	return nil
+}
+
+// make sure minio server is bootstrapped
+// 		if any issues, mark pipeline as failed
+//		if minio server did not exist, create it
+// wait for minio server to be "ready"
+// create the pipeline jobs for current stage in the system
 func (p *PipelineExecutor) processRunningPipeline() error {
 	p.logger.Info("todo: processing running pipeline")
 	return nil
 }
 
+// cleanup all resources associated with the pipeline
 func (p *PipelineExecutor) processFinishedPipeline() error {
 	p.logger.Info("todo: processing finished pipeline")
 	return nil

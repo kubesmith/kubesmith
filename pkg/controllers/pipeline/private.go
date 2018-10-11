@@ -26,8 +26,10 @@ func (c *PipelineController) processPipeline(key string) error {
 
 	// create a new logger for this pipeline's execution
 	fieldLogger := c.logger.WithFields(logrus.Fields{
-		"Name":      pipeline.Name,
-		"Namespace": pipeline.Namespace,
+		"Name":       pipeline.Name,
+		"Namespace":  pipeline.Namespace,
+		"Phase":      pipeline.Status.Phase,
+		"StageIndex": pipeline.Status.StageIndex,
 	})
 
 	// create a new pipeline executor to handle carrying the actions necessary for

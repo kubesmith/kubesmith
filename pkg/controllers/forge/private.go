@@ -1,7 +1,6 @@
 package forge
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,7 +18,7 @@ func (c *ForgeController) processForge(key string) error {
 		return errors.Wrap(err, "error getting forge")
 	}
 
-	spew.Dump(forge)
+	_ = forge
 
 	return nil
 }

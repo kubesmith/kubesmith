@@ -37,7 +37,11 @@ func (p *PipelineExecutor) Validate() error {
 
 func (p *PipelineExecutor) Execute() error {
 	switch p._cachedPipeline.Status.Phase {
-	case api.PipelinePhaseEmpty, api.PipelinePhaseQueued:
+	case api.PipelinePhaseEmpty:
+		if err := p.processEmptyPhasePipeline(); err != nil {
+			return err
+		}
+	case api.PipelinePhaseQueued:
 		if err := p.processQueuedPipeline(); err != nil {
 			return err
 		}
@@ -58,21 +62,31 @@ func (p *PipelineExecutor) GetNamespace() string {
 	return p._cachedPipeline.Namespace
 }
 
-func (p *PipelineExecutor) SetPipelineStatus(status api.PipelinePhase) error {
-	switch status {
-	case api.PipelinePhaseCompleted:
-		p.Pipeline.Status.Phase = api.PipelinePhaseCompleted
-		p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
-	case api.PipelinePhaseFailed:
-		p.Pipeline.Status.Phase = api.PipelinePhaseFailed
-		p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
-	case api.PipelinePhaseRunning:
-		p.Pipeline.Status.Phase = api.PipelinePhaseRunning
-		p.Pipeline.Status.StageIndex = 1
-	case api.PipelinePhaseQueued:
-		p.Pipeline.Status.Phase = api.PipelinePhaseQueued
-		p.Pipeline.Status.StageIndex = 0
-	}
+func (p *PipelineExecutor) SetPipelineToQueued() error {
+	p.Pipeline.Status.Phase = api.PipelinePhaseQueued
+	p.Pipeline.Status.StageIndex = 0
+
+	return p.patchPipeline()
+}
+
+func (p *PipelineExecutor) SetPipelineToCompleted() error {
+	p.Pipeline.Status.Phase = api.PipelinePhaseCompleted
+	p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
+
+	return p.patchPipeline()
+}
+
+func (p *PipelineExecutor) SetPipelineToRunning() error {
+	p.Pipeline.Status.Phase = api.PipelinePhaseRunning
+	p.Pipeline.Status.StageIndex = 1
+
+	return p.patchPipeline()
+}
+
+func (p *PipelineExecutor) SetPipelineToFailed(reason string) error {
+	p.Pipeline.Status.Phase = api.PipelinePhaseFailed
+	p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
+	p.Pipeline.Status.FailureReason = reason
 
 	return p.patchPipeline()
 }
