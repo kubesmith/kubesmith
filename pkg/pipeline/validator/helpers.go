@@ -57,9 +57,24 @@ func ValidateTemplates(templates []api.PipelineSpecJobTemplate) error {
 	return nil
 }
 
-func ValidateStages(stages []string) error {
+func ValidateStages(stages []string, jobs []api.PipelineSpecJob) error {
 	if len(stages) == 0 {
 		return errors.New("stages must include at least one value")
+	}
+
+	for _, stage := range stages {
+		stage = strings.ToLower(stage)
+		hasJobs := false
+
+		for _, job := range jobs {
+			if stage == strings.ToLower(job.Stage) {
+				hasJobs = true
+			}
+		}
+
+		if !hasJobs {
+			return errors.New("each stage must have jobs associated to it")
+		}
 	}
 
 	return nil

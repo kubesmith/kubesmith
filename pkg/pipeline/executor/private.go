@@ -1,12 +1,14 @@
 package executor
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -63,22 +65,6 @@ func (p *PipelineExecutor) processEmptyPhasePipeline() error {
 }
 
 func (p *PipelineExecutor) processQueuedPipeline() error {
-	// first, validate the pipeline before doing anything
-	p.logger.Info("validating pipeline...")
-	if err := p.Validate(); err != nil {
-		p.logger.Error("could not validate pipeline")
-		p.logger.Error(err)
-
-		p.logger.Info("marking pipeline as failed")
-		if err := p.SetPipelineToFailed(err.Error()); err != nil {
-			p.logger.Error("could not mark pipeline as failed")
-			p.logger.Error(err)
-		}
-
-		return err
-	}
-	p.logger.Info("finished validating pipeline")
-
 	// check to see if we can run another pipeline in this namespace
 	p.logger.Info("checking to see if we can run another pipeline in this namespace")
 	canRunAnotherPipeline, err := p.canRunAnotherPipeline()
@@ -113,7 +99,41 @@ func (p *PipelineExecutor) processQueuedPipeline() error {
 // wait for minio server to be "ready"
 // create the pipeline jobs for current stage in the system
 func (p *PipelineExecutor) processRunningPipeline() error {
-	p.logger.Info("todo: processing running pipeline")
+	// ensure the minio server exists
+	p.logger.Info("ensuring a minio server exists for this pipeline")
+	minioServer := minio.NewMinioServer(
+		p.GetNamespace(),
+		p.GetResourcePrefix(),
+		p.GetResourceLabels(),
+		p.logger,
+		p.kubeClient,
+	)
+
+	if err := minioServer.Create(); err != nil {
+		p.logger.Error("could not ensure minio server exists")
+		p.logger.Error(err)
+		return err
+	}
+
+	p.logger.Info("minio server exists")
+
+	// wait for minio server to be ready
+	p.logger.Info("waiting for minio server to be available...")
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelFunc()
+
+	minioServerAvailable := make(chan bool, 1)
+	go minioServer.WaitForAvailability(ctx, 5, minioServerAvailable)
+
+	if available := <-minioServerAvailable; !available {
+		return errors.New("minio server is not available")
+	}
+
+	p.logger.Info("minio server is available!")
+
+	// lastly, ensure all of the jobs for this pipeline stage have been scheduled
+	// todo: finish this
+
 	return nil
 }
 
@@ -141,7 +161,7 @@ func (p *PipelineExecutor) patchPipeline() error {
 		return errors.Wrap(err, "error creating json merge patch for pipeline")
 	}
 
-	res, err := p.kubesmithClient.Pipelines(p._cachedPipeline.Namespace).Patch(p._cachedPipeline.Name, types.MergePatchType, patchBytes)
+	res, err := p.kubesmithClient.Pipelines(p.GetNamespace()).Patch(p._cachedPipeline.Name, types.MergePatchType, patchBytes)
 	if err != nil {
 		return errors.Wrap(err, "error patching pipeline")
 	}

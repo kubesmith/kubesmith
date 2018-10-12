@@ -7,28 +7,19 @@ import (
 	"fmt"
 	mathrand "math/rand"
 	"time"
-
-	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 )
 
-func GetPipelineMD5(pipeline *api.Pipeline) string {
+func GetMD5(value string) string {
 	hasher := md5.New()
-	hasher.Write([]byte(pipeline.Name))
+	hasher.Write([]byte(value))
 
 	return hex.EncodeToString(hasher.Sum(nil))
 }
 
-func GetPipelineResourcePrefix(pipeline *api.Pipeline) string {
-	return fmt.Sprintf("pipeline-%s", GetPipelineMD5(pipeline))
-}
+func GetPipelineMD5(name, namespace string) string {
+	value := fmt.Sprintf("%s:%s", name, namespace)
 
-func GetPipelineResourceLabels(pipeline *api.Pipeline) map[string]string {
-	labels := map[string]string{
-		"PipelineName": pipeline.Name,
-		"PipelineMD5":  GetPipelineMD5(pipeline),
-	}
-
-	return labels
+	return GetMD5(value)
 }
 
 func GenerateRandomString(s int, letters ...string) string {

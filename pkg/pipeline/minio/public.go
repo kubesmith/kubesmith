@@ -1,7 +1,9 @@
 package minio
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio/templates"
 	"github.com/pkg/errors"
@@ -118,4 +120,36 @@ func (m *MinioServer) Delete() error {
 	}
 
 	return m.DeleteSecret()
+}
+
+func (m *MinioServer) WaitForAvailability(
+	ctx context.Context,
+	secondsInterval int,
+	minioServerAvailable chan bool,
+) {
+	// rework this function once we have a better understanding of how to wait
+	// for a specific thing
+	namespace := m.minioDeployment.Namespace
+	name := m.minioDeployment.Name
+
+	for {
+		select {
+		case <-ctx.Done():
+			minioServerAvailable <- false
+			break
+		default:
+			deployment, err := m.kubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				m.logger.Warn(errors.Wrap(err, "could not fetch minio deployment"))
+			}
+
+			if deployment.Status.ReadyReplicas == deployment.Status.Replicas {
+				minioServerAvailable <- true
+				return
+			}
+		}
+
+		// make sure to sleep so we don't hammer the api server
+		time.Sleep(time.Second * time.Duration(secondsInterval))
+	}
 }
