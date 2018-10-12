@@ -147,6 +147,7 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 			p.GetResourceLabels(),
 			job,
 			minioServer,
+			p.jobLister,
 		)
 
 		if err != nil {
