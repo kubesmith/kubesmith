@@ -1,0 +1,39 @@
+apiVersion: kubesmith.io/v1
+kind: Pipeline
+metadata:
+  name: simple-pipeline
+  namespace: kubesmith
+spec:
+  workspace:
+    path: src/github.com/carldanley/dualshock
+    repoURL: git@github.com:carldanley/dualshock4.git
+
+  environment:
+  - MY_TEST_VAR=foobar
+
+  templates:
+  - name: default
+    image: golang
+    shell: /bin/sh
+
+  stages:
+  - linting
+  - testing
+
+  jobs:
+  - name: lint code
+    stage: linting
+    extends:
+    - default
+    commands: |
+      #!/bin/sh
+      go get -u github.com/golang/lint/golint
+      golint ./
+    allowFailure: true
+
+  - name: do something to test second stage
+    stage: testing
+    image: ubuntu
+    commands: |
+      #!/bin/sh
+      ls -la

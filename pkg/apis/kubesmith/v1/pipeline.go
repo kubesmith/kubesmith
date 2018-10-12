@@ -13,28 +13,30 @@ type PipelineSpec struct {
 }
 
 type PipelineSpecWorkspace struct {
-	Path string `json:"path"`
+	Path    string `json:"path"`
+	RepoURL string `json:"repoURL"`
 }
 
 type PipelineSpecJobTemplate struct {
 	Name        string                    `json:"name"`
 	Image       string                    `json:"image"`
 	Environment []string                  `json:"environment"`
+	Shell       string                    `json:"shell"`
 	Artifacts   []PipelineSpecJobArtifact `json:"artifacts"`
 	OnlyOn      []string                  `json:"onlyOn"`
 }
 
 type PipelineSpecJob struct {
-	Name            string                    `json:"name"`
-	Image           string                    `json:"image"`
-	ImagePullSecret string                    `json:"imagePullSecret"`
-	Stage           string                    `json:"stage"`
-	Extends         []string                  `json:"extends"`
-	Environment     []string                  `json:"environment"`
-	Commands        []string                  `json:"commands"`
-	AllowFailure    bool                      `json:"allowFailure"`
-	Artifacts       []PipelineSpecJobArtifact `json:"artifacts"`
-	OnlyOn          []string                  `json:"onlyOn"`
+	Name         string                    `json:"name"`
+	Image        string                    `json:"image"`
+	Stage        string                    `json:"stage"`
+	Extends      []string                  `json:"extends"`
+	Environment  []string                  `json:"environment"`
+	Shell        string                    `json:"shell"`
+	Commands     string                    `json:"commands"`
+	AllowFailure bool                      `json:"allowFailure"`
+	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
+	OnlyOn       []string                  `json:"onlyOn"`
 }
 
 const (

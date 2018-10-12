@@ -92,8 +92,6 @@ func ValidateJobs(jobs []api.PipelineSpecJob, stages []string, templates []api.P
 			return errors.New("job image must not be empty")
 		}
 
-		// todo: validate the image pull secret (check that it exists)
-
 		// check the job has a stage specified
 		if job.Stage == "" {
 			return errors.New("job stage must be specified")
@@ -131,15 +129,6 @@ func ValidateJobs(jobs []api.PipelineSpecJob, stages []string, templates []api.P
 		// check the job has valid environment variables
 		if err := ValidateEnvironmentVariables(job.Environment); err != nil {
 			return err
-		}
-
-		// check that the commands are valid
-		if len(job.Commands) > 0 {
-			for _, command := range job.Commands {
-				if command == "" {
-					return errors.New("job command entry must not be empty")
-				}
-			}
 		}
 
 		// check that the artifacts are valid

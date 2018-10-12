@@ -2,6 +2,7 @@ package executor
 
 import (
 	"fmt"
+	"time"
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
@@ -31,7 +32,7 @@ func (p *PipelineExecutor) Validate() error {
 	// resource declared.
 	expandedJobs := []api.PipelineSpecJob{}
 	for _, job := range expandedJobs {
-		expandedJobs = append(expandedJobs, *p.expandJobPipeline(job))
+		expandedJobs = append(expandedJobs, *p.expandPipelineJob(job))
 	}
 
 	// lastly, validate the jobs
@@ -66,29 +67,32 @@ func (p *PipelineExecutor) GetNamespace() string {
 }
 
 func (p *PipelineExecutor) SetPipelineToQueued() error {
-	p.Pipeline.Status.Phase = api.PipelinePhaseQueued
 	p.Pipeline.Status.StageIndex = 0
+	p.Pipeline.Status.Phase = api.PipelinePhaseQueued
 
 	return p.patchPipeline()
 }
 
 func (p *PipelineExecutor) SetPipelineToCompleted() error {
-	p.Pipeline.Status.Phase = api.PipelinePhaseCompleted
 	p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
+	p.Pipeline.Status.Phase = api.PipelinePhaseCompleted
+	p.Pipeline.Status.EndTime.Time = time.Now()
 
 	return p.patchPipeline()
 }
 
 func (p *PipelineExecutor) SetPipelineToRunning() error {
-	p.Pipeline.Status.Phase = api.PipelinePhaseRunning
 	p.Pipeline.Status.StageIndex = 1
+	p.Pipeline.Status.Phase = api.PipelinePhaseRunning
+	p.Pipeline.Status.StartTime.Time = time.Now()
 
 	return p.patchPipeline()
 }
 
 func (p *PipelineExecutor) SetPipelineToFailed(reason string) error {
-	p.Pipeline.Status.Phase = api.PipelinePhaseFailed
 	p.Pipeline.Status.StageIndex = len(p.Pipeline.Spec.Stages)
+	p.Pipeline.Status.Phase = api.PipelinePhaseFailed
+	p.Pipeline.Status.EndTime.Time = time.Now()
 	p.Pipeline.Status.FailureReason = reason
 
 	return p.patchPipeline()
@@ -102,7 +106,9 @@ func (p *PipelineExecutor) GetResourcePrefix() string {
 
 func (p *PipelineExecutor) GetResourceLabels() map[string]string {
 	labels := map[string]string{
-		"PipelineMD5": utils.GetPipelineMD5(p._cachedPipeline.Name, p._cachedPipeline.Namespace),
+		"PipelineName":      p._cachedPipeline.Name,
+		"PipelineNamespace": p._cachedPipeline.Namespace,
+		"PipelineMD5":       utils.GetPipelineMD5(p._cachedPipeline.Name, p._cachedPipeline.Namespace),
 	}
 
 	return labels

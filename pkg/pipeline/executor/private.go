@@ -8,6 +8,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/pipeline/jobs"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -100,7 +101,7 @@ func (p *PipelineExecutor) processQueuedPipeline() error {
 // create the pipeline jobs for current stage in the system
 func (p *PipelineExecutor) processRunningPipeline() error {
 	// ensure the minio server exists
-	p.logger.Info("ensuring a minio server exists for this pipeline")
+	p.logger.Info("ensuring minio server resources are scheduled...")
 	minioServer := minio.NewMinioServer(
 		p.GetNamespace(),
 		p.GetResourcePrefix(),
@@ -110,12 +111,12 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 	)
 
 	if err := minioServer.Create(); err != nil {
-		p.logger.Error("could not ensure minio server exists")
+		p.logger.Error("could not ensure minio server resources are scheduled")
 		p.logger.Error(err)
 		return err
 	}
 
-	p.logger.Info("minio server exists")
+	p.logger.Info("minio server resources are scheduled")
 
 	// wait for minio server to be ready
 	p.logger.Info("waiting for minio server to be available...")
@@ -132,8 +133,12 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 	p.logger.Info("minio server is available!")
 
 	// lastly, ensure all of the jobs for this pipeline stage have been scheduled
-	// todo: finish this
+	p.logger.Info("ensuring jobs are scheduled")
+	if err := jobs.EnsureJobsAreScheduled(p.getExpandedJobsForCurrentStage(), minioServer); err != nil {
+		return errors.Wrap(err, "could not ensure jobs are scheduled")
+	}
 
+	p.logger.Info("jobs are scheduled")
 	return nil
 }
 
@@ -183,7 +188,7 @@ func (p *PipelineExecutor) getCurrentStageName() string {
 	return p.Pipeline.Spec.Stages[currentStage-1]
 }
 
-func (p *PipelineExecutor) getJobsForCurrentStage() []api.PipelineSpecJob {
+func (p *PipelineExecutor) getExpandedJobsForCurrentStage() []api.PipelineSpecJob {
 	jobs := []api.PipelineSpecJob{}
 	stageName := strings.ToLower(p.getCurrentStageName())
 
@@ -191,32 +196,21 @@ func (p *PipelineExecutor) getJobsForCurrentStage() []api.PipelineSpecJob {
 		return jobs
 	}
 
-	for _, job := range p._cachedPipeline.Spec.Jobs {
+	for _, original := range p._cachedPipeline.Spec.Jobs {
+		job := original.DeepCopy()
 		if strings.ToLower(job.Stage) == stageName {
-			jobs = append(jobs, job)
+			jobs = append(jobs, *p.expandPipelineJob(*job))
 		}
 	}
 
 	return jobs
 }
 
-func (p *PipelineExecutor) advanceCurrentStageIndex() error {
-	totalStages := len(p.Pipeline.Spec.Stages)
-	nextStage := p.Pipeline.Status.StageIndex + 1
-
-	if nextStage > totalStages {
-		p.Pipeline.Status.Phase = api.PipelinePhaseCompleted
-	} else {
-		p.Pipeline.Status.StageIndex = nextStage
-	}
-
-	return p.patchPipeline()
-}
-
-func (p *PipelineExecutor) expandJobPipeline(oldJob api.PipelineSpecJob) *api.PipelineSpecJob {
+func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.PipelineSpecJob {
 	job := oldJob.DeepCopy()
 	envVars := []string{}
 	artifacts := []api.PipelineSpecJobArtifact{}
+	oldShell := job.Shell
 
 	// if this job doesn't extend anything, we're done
 	if len(job.Extends) == 0 {
@@ -259,6 +253,12 @@ func (p *PipelineExecutor) expandJobPipeline(oldJob api.PipelineSpecJob) *api.Pi
 		if len(template.OnlyOn) > 0 {
 			job.OnlyOn = template.OnlyOn
 		}
+
+		// if the template specifies a "Shell" value, overwrite the current one (if
+		// the job didn't have one specified)
+		if template.Shell != "" && oldShell == "" {
+			job.Shell = template.Shell
+		}
 	}
 
 	// now that we've looped through the templates, we have all of the environment
@@ -273,6 +273,12 @@ func (p *PipelineExecutor) expandJobPipeline(oldJob api.PipelineSpecJob) *api.Pi
 	// if the job had any artifacts specified, add them last
 	for _, artifact := range job.Artifacts {
 		artifacts = append(artifacts, artifact)
+	}
+
+	// check to see if this job has a default shell, if it doesn't specify the
+	// default shell
+	if job.Commands != "" && job.Shell == "" {
+		job.Shell = "/bin/sh"
 	}
 
 	// lastly, set the built environment variables + artifacts

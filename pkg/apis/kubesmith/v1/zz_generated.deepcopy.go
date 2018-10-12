@@ -232,11 +232,6 @@ func (in *PipelineSpecJob) DeepCopyInto(out *PipelineSpecJob) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Commands != nil {
-		in, out := &in.Commands, &out.Commands
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	if in.Artifacts != nil {
 		in, out := &in.Artifacts, &out.Artifacts
 		*out = make([]PipelineSpecJobArtifact, len(*in))
