@@ -7,5 +7,6 @@ import (
 
 func EnsureJobsAreScheduled(jobs []api.PipelineSpecJob, minioServer *minio.MinioServer) error {
 	// todo: left off here
+	// be sure to query for the existing jobs to see if they are running (with configmaps, too)
 	return nil
 }
