@@ -134,8 +134,26 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 
 	// lastly, ensure all of the jobs for this pipeline stage have been scheduled
 	p.logger.Info("ensuring jobs are scheduled")
-	if err := jobs.EnsureJobsAreScheduled(p.getExpandedJobsForCurrentStage(), minioServer); err != nil {
-		return errors.Wrap(err, "could not ensure jobs are scheduled")
+	stageIndex := p._cachedPipeline.Status.StageIndex
+	for index, job := range p.getExpandedJobsForCurrentStage() {
+		jobIndex := index + 1
+
+		p.logger.Infof("scheduling job %d for stage %d...", jobIndex, stageIndex)
+		err := jobs.ScheduleJob(
+			jobs.GetResourceName(p.GetResourcePrefix(), stageIndex, jobIndex),
+			p._cachedPipeline.Name,
+			p.GetResourceLabels(),
+			job,
+			minioServer,
+		)
+
+		if err != nil {
+			err = errors.Wrap(err, "could not schedule job")
+			p.logger.Error(err)
+			return err
+		}
+
+		p.logger.Infof("scheduled job %d for stage %d!", jobIndex, stageIndex)
 	}
 
 	p.logger.Info("jobs are scheduled")
