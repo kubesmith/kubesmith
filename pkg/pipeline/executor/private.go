@@ -11,18 +11,18 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/pipeline/jobs"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 func (p *PipelineExecutor) canRunAnotherPipeline() (bool, error) {
-	pipelines, err := p.kubesmithClient.Pipelines(p.Pipeline.Namespace).List(metav1.ListOptions{})
+	pipelines, err := p.pipelineLister.Pipelines(p._cachedPipeline.Namespace).List(labels.Everything())
 	if err != nil {
 		return false, errors.Wrap(err, "could not list pipelines")
 	}
 
 	currentlyRunning := 0
-	for _, pipeline := range pipelines.Items {
+	for _, pipeline := range pipelines {
 		if pipeline.Status.Phase == api.PipelinePhaseRunning {
 			currentlyRunning++
 		}
@@ -108,6 +108,7 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 		p.GetResourceLabels(),
 		p.logger,
 		p.kubeClient,
+		p.deploymentLister,
 	)
 
 	if err := minioServer.Create(); err != nil {

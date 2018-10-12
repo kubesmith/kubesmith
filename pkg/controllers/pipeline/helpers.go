@@ -6,8 +6,10 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
-	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
+	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
 	"github.com/sirupsen/logrus"
+	appInformersv1 "k8s.io/client-go/informers/apps/v1"
+	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -18,7 +20,9 @@ func NewPipelineController(
 	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
-	pipelineInformer informers.PipelineInformer,
+	pipelineInformer kubesmithInformers.PipelineInformer,
+	deploymentsInformer appInformersv1.DeploymentInformer,
+	jobsInformer batchInformersv1.JobInformer,
 ) controllers.Interface {
 	c := &PipelineController{
 		GenericController:   generic.NewGenericController("pipeline"),
@@ -27,20 +31,26 @@ func NewPipelineController(
 		logger:              logger,
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
+		pipelineLister:      pipelineInformer.Lister(),
+		deploymentLister:    deploymentsInformer.Lister(),
+		jobLister:           jobsInformer.Lister(),
 	}
 
 	c.SyncHandler = c.processPipeline
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineInformer.Informer().HasSynced,
+		deploymentsInformer.Informer().HasSynced,
+		jobsInformer.Informer().HasSynced,
 	)
 
+	// setup event handlers for pipelines
 	pipelineInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				pipeline := obj.(*v1.Pipeline)
 
-				key, err := cache.MetaNamespaceKeyFunc(obj)
+				key, err := cache.MetaNamespaceKeyFunc(pipeline)
 				if err != nil {
 					glog.Errorf("Error creating queue key, item not added to queue; name: %s", pipeline.Name)
 					return

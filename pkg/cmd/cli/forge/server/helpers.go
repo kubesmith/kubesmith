@@ -16,6 +16,7 @@ import (
 	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	kubeInformers "k8s.io/client-go/informers"
 )
 
 func NewCommand(f client.Factory) *cobra.Command {
@@ -53,12 +54,20 @@ func NewServer(o *Options) *Server {
 	// setup a logger for this pipeline controller
 	logger := logrus.New()
 
-	// setup some pipeline helpers
+	// setup our informers
 	kubesmithInformerFactory := kubesmithInformers.NewSharedInformerFactoryWithOptions(
 		o.client,
 		0,
 		kubesmithInformers.WithNamespace(o.Namespace),
 	)
+
+	kubeInformerFactory := kubeInformers.NewSharedInformerFactoryWithOptions(
+		o.kubeClient,
+		0,
+		kubeInformers.WithNamespace(o.Namespace),
+	)
+
+	// setup our controllers
 	pipelineController := pipeline.NewPipelineController(
 		o.Namespace,
 		o.MaxRunningPipelines,
@@ -66,6 +75,8 @@ func NewServer(o *Options) *Server {
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
+		kubeInformerFactory.Apps().V1().Deployments(),
+		kubeInformerFactory.Batch().V1().Jobs(),
 	)
 
 	// finally, return the server
@@ -79,6 +90,7 @@ func NewServer(o *Options) *Server {
 		ctx:                      ctx,
 		cancelContext:            cancelContext,
 		kubesmithInformerFactory: kubesmithInformerFactory,
+		kubeInformerFactory:      kubeInformerFactory,
 		pipelineController:       pipelineController,
 	}
 }

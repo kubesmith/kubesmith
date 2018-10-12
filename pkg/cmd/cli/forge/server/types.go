@@ -7,6 +7,7 @@ import (
 	kubesmithClient "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
 	"github.com/sirupsen/logrus"
+	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -28,5 +29,6 @@ type Server struct {
 	ctx                      context.Context
 	cancelContext            context.CancelFunc
 	kubesmithInformerFactory kubesmithInformers.SharedInformerFactory
+	kubeInformerFactory      kubeInformers.SharedInformerFactory
 	pipelineController       controllers.Interface
 }

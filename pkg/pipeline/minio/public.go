@@ -41,7 +41,7 @@ func (m *MinioServer) CreateSecret() error {
 
 func (m *MinioServer) CreateDeployment() error {
 	resourceName := m.GetResourceName()
-	deployment, err := m.kubeClient.AppsV1().Deployments(m.Namespace).Get(resourceName, metav1.GetOptions{})
+	deployment, err := m.deploymentLister.Deployments(m.Namespace).Get(resourceName)
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -138,7 +138,7 @@ func (m *MinioServer) WaitForAvailability(
 			minioServerAvailable <- false
 			break
 		default:
-			deployment, err := m.kubeClient.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+			deployment, err := m.deploymentLister.Deployments(namespace).Get(name)
 			if err != nil {
 				m.logger.Warn(errors.Wrap(err, "could not fetch minio deployment"))
 			}

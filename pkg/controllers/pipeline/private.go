@@ -16,7 +16,8 @@ func (c *PipelineController) processPipeline(key string) error {
 		return errors.Wrap(err, "error splitting queue key")
 	}
 
-	pipeline, err := c.kubesmithClient.Pipelines(ns).Get(name, metav1.GetOptions{})
+	// todo: use a lister for this to hit cache instead
+	pipeline, err := c.pipelineLister.Pipelines(ns).Get(name)
 	if apierrors.IsNotFound(err) {
 		glog.V(1).Info("unable to find pipeline")
 		return nil
@@ -40,6 +41,9 @@ func (c *PipelineController) processPipeline(key string) error {
 		fieldLogger,
 		c.kubeClient,
 		c.kubesmithClient,
+		c.pipelineLister,
+		c.deploymentLister,
+		c.jobLister,
 	)
 
 	// finally, let's execute the pipeline
