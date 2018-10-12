@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func BuildJobFromPipelineJob(
+func GetJob(
 	labels map[string]string,
 	pipelineName string,
 	jobName, jobImage string,

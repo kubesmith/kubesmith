@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func BuildJobConfigMapFromPipelineJob(name string, labels map[string]string, job api.PipelineSpecJob) corev1.ConfigMap {
+func GetJobConfigMap(name string, labels map[string]string, job api.PipelineSpecJob) corev1.ConfigMap {
 	return corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,

@@ -137,8 +137,9 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 	stageIndex := p._cachedPipeline.Status.StageIndex
 	for index, job := range p.getExpandedJobsForCurrentStage() {
 		jobIndex := index + 1
+		logger := p.logger.WithField("JobIndex", jobIndex)
 
-		p.logger.Infof("scheduling job %d for stage %d...", jobIndex, stageIndex)
+		logger.Info("scheduling job...")
 		err := jobs.ScheduleJob(
 			jobs.GetResourceName(p.GetResourcePrefix(), stageIndex, jobIndex),
 			p._cachedPipeline.Name,
@@ -149,11 +150,11 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 
 		if err != nil {
 			err = errors.Wrap(err, "could not schedule job")
-			p.logger.Error(err)
+			logger.Error(err)
 			return err
 		}
 
-		p.logger.Infof("scheduled job %d for stage %d!", jobIndex, stageIndex)
+		logger.Info("scheduled job!")
 	}
 
 	p.logger.Info("jobs are scheduled")
