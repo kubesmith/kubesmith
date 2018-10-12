@@ -20,9 +20,12 @@ func (s *Server) runControllers() error {
 	}()
 
 	// start the shared informer after all of our controllers
-	go s.sharedInformerFactory.Start(s.ctx.Done())
+	go s.kubesmithInformerFactory.Start(s.ctx.Done())
 
-	cache.WaitForCacheSync(s.ctx.Done(), s.sharedInformerFactory.Kubesmith().V1().Pipelines().Informer().HasSynced)
+	cache.WaitForCacheSync(
+		s.ctx.Done(),
+		s.kubesmithInformerFactory.Kubesmith().V1().Pipelines().Informer().HasSynced,
+	)
 
 	<-s.ctx.Done()
 

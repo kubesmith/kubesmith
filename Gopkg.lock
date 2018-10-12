@@ -579,7 +579,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/davecgh/go-spew/spew",
     "github.com/evanphx/json-patch",
     "github.com/golang/glog",
     "github.com/mholt/archiver",
