@@ -77,6 +77,7 @@ func NewServer(o *Options) *Server {
 		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
 		kubeInformerFactory.Apps().V1().Deployments(),
 		kubeInformerFactory.Batch().V1().Jobs(),
+		kubeInformerFactory.Core().V1().ConfigMaps(),
 	)
 
 	// finally, return the server

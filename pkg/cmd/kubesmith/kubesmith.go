@@ -32,7 +32,6 @@ Kubernetes -- giving you the full power of Kubernetes.`,
 	// add the glog flags
 	c.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
-	// TODO: switch to a different logging library.
 	// Work around https://github.com/golang/glog/pull/13.
 	// See also https://github.com/kubernetes/kubernetes/issues/17162
 	flag.CommandLine.Parse([]string{})

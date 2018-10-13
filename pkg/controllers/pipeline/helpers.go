@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	appInformersv1 "k8s.io/client-go/informers/apps/v1"
 	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
+	coreInformersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -23,6 +24,7 @@ func NewPipelineController(
 	pipelineInformer kubesmithInformers.PipelineInformer,
 	deploymentsInformer appInformersv1.DeploymentInformer,
 	jobsInformer batchInformersv1.JobInformer,
+	configMapsInformer coreInformersv1.ConfigMapInformer,
 ) controllers.Interface {
 	c := &PipelineController{
 		GenericController:   generic.NewGenericController("pipeline"),
@@ -34,6 +36,7 @@ func NewPipelineController(
 		pipelineLister:      pipelineInformer.Lister(),
 		deploymentLister:    deploymentsInformer.Lister(),
 		jobLister:           jobsInformer.Lister(),
+		configMapLister:     configMapsInformer.Lister(),
 	}
 
 	c.SyncHandler = c.processPipeline
@@ -42,6 +45,7 @@ func NewPipelineController(
 		pipelineInformer.Informer().HasSynced,
 		deploymentsInformer.Informer().HasSynced,
 		jobsInformer.Informer().HasSynced,
+		configMapsInformer.Informer().HasSynced,
 	)
 
 	// setup event handlers for pipelines
@@ -84,7 +88,9 @@ func NewPipelineController(
 				}
 
 				// if the phase is "running" and the stageIndex changed, react
-				if (updatedPipeline.Status.Phase == v1.PipelinePhaseRunning) && (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex) {
+				isRunningPhase := (updatedPipeline.Status.Phase == v1.PipelinePhaseRunning)
+				stageIndexChanged := (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex)
+				if isRunningPhase && stageIndexChanged {
 					tmpLogger.Info("queueing pipeline: stage index advanced")
 					c.Queue.Add(key)
 				}

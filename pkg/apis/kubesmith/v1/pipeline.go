@@ -33,7 +33,7 @@ type PipelineSpecJob struct {
 	Extends      []string                  `json:"extends"`
 	Environment  []string                  `json:"environment"`
 	Shell        string                    `json:"shell"`
-	Commands     string                    `json:"commands"`
+	Commands     []string                  `json:"commands"`
 	AllowFailure bool                      `json:"allowFailure"`
 	Artifacts    []PipelineSpecJobArtifact `json:"artifacts"`
 	OnlyOn       []string                  `json:"onlyOn"`

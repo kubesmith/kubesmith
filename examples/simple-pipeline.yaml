@@ -5,7 +5,7 @@ metadata:
   namespace: kubesmith
 spec:
   workspace:
-    path: src/github.com/carldanley/dualshock
+    path: /go/src/github.com/carldanley/dualshock
     repoURL: git@github.com:carldanley/dualshock4.git
 
   environment:
@@ -14,7 +14,6 @@ spec:
   templates:
   - name: default
     image: golang
-    shell: /bin/sh
 
   stages:
   - linting
@@ -25,15 +24,13 @@ spec:
     stage: linting
     extends:
     - default
-    commands: |
-      #!/bin/sh
-      go get -u github.com/golang/lint/golint
-      golint ./
+    commands:
+    - go get -u golang.org/x/lint/golint
+    - golint ./
     allowFailure: true
 
   - name: do something to test second stage
     stage: testing
     image: ubuntu
-    commands: |
-      #!/bin/sh
-      ls -la
+    commands:
+    - ls -la

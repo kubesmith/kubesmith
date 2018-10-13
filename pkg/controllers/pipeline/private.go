@@ -16,7 +16,6 @@ func (c *PipelineController) processPipeline(key string) error {
 		return errors.Wrap(err, "error splitting queue key")
 	}
 
-	// todo: use a lister for this to hit cache instead
 	pipeline, err := c.pipelineLister.Pipelines(ns).Get(name)
 	if apierrors.IsNotFound(err) {
 		glog.V(1).Info("unable to find pipeline")
@@ -44,6 +43,7 @@ func (c *PipelineController) processPipeline(key string) error {
 		c.pipelineLister,
 		c.deploymentLister,
 		c.jobLister,
+		c.configMapLister,
 	)
 
 	// finally, let's execute the pipeline

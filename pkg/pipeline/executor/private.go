@@ -3,14 +3,18 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
-	"github.com/kubesmith/kubesmith/pkg/pipeline/jobs"
+	jobTemplates "github.com/kubesmith/kubesmith/pkg/pipeline/jobs/templates"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
 	"github.com/pkg/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -135,22 +139,12 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 
 	// lastly, ensure all of the jobs for this pipeline stage have been scheduled
 	p.logger.Info("ensuring jobs are scheduled")
-	stageIndex := p._cachedPipeline.Status.StageIndex
 	for index, job := range p.getExpandedJobsForCurrentStage() {
 		jobIndex := index + 1
 		logger := p.logger.WithField("JobIndex", jobIndex)
 
 		logger.Info("scheduling job...")
-		err := jobs.ScheduleJob(
-			jobs.GetResourceName(p.GetResourcePrefix(), stageIndex, jobIndex),
-			p._cachedPipeline.Name,
-			p.GetResourceLabels(),
-			job,
-			minioServer,
-			p.jobLister,
-		)
-
-		if err != nil {
+		if err := p.scheduleJob(job, jobIndex, minioServer, logger); err != nil {
 			err = errors.Wrap(err, "could not schedule job")
 			logger.Error(err)
 			return err
@@ -160,6 +154,83 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 	}
 
 	p.logger.Info("jobs are scheduled")
+	return nil
+}
+
+func (p *PipelineExecutor) getJobResourceName(jobIndex int) string {
+	return fmt.Sprintf(
+		"%s-stage-%d-job-%d",
+		p.GetResourcePrefix(),
+		p._cachedPipeline.Status.StageIndex,
+		jobIndex,
+	)
+}
+
+func (p *PipelineExecutor) ensureJobConfigMapExists(name string, commands []string, logger logrus.FieldLogger) error {
+	logger.Info("checking to see if configmap for job exists...")
+	if _, err := p.configMapLister.ConfigMaps(p.GetNamespace()).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			resource := jobTemplates.GetJobConfigMap(name, p.GetResourceLabels(), commands)
+			_, err := p.kubeClient.CoreV1().ConfigMaps(p.GetNamespace()).Create(&resource)
+
+			if err != nil {
+				return errors.Wrap(err, "could not create configmap for job")
+			}
+
+			logger.Info("configmap for job created")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not find configmap for job")
+	}
+
+	logger.Info("configmap for job exists")
+	return nil
+}
+
+func (p *PipelineExecutor) scheduleJob(
+	job api.PipelineSpecJob,
+	jobIndex int,
+	minioServer *minio.MinioServer,
+	logger logrus.FieldLogger,
+) error {
+	// build a name for these resources
+	name := p.getJobResourceName(jobIndex)
+	namespace := p.GetNamespace()
+
+	// ensure the configMap exists (if it's needed)
+	if err := p.ensureJobConfigMapExists(name, job.Commands, logger); err != nil {
+		return err
+	}
+
+	// now, ensure the job exists
+	logger.Info("checking to see if job exists...")
+	if _, err := p.jobLister.Jobs(namespace).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			shellParts := strings.Split(job.Shell, " ")
+			shellParts = append(shellParts, "/kubesmith/scripts/pipeline-script")
+
+			resource := jobTemplates.GetJob(
+				name,
+				job.Image,
+				shellParts,
+				p.GetResourceLabels(),
+			)
+
+			_, err := p.kubeClient.BatchV1().Jobs(namespace).Create(&resource)
+
+			if err != nil {
+				return errors.Wrap(err, "could not create job")
+			}
+
+			logger.Info("job created")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not find job")
+	}
+
+	logger.Info("job exists")
 	return nil
 }
 
@@ -296,10 +367,13 @@ func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.Pi
 		artifacts = append(artifacts, artifact)
 	}
 
+	// add the command to write the IPC file
+	job.Commands = append(job.Commands, "touch /kubesmith/kubesmith-pipeline-flag-file")
+
 	// check to see if this job has a default shell, if it doesn't specify the
 	// default shell
-	if job.Commands != "" && job.Shell == "" {
-		job.Shell = "/bin/sh"
+	if job.Shell == "" {
+		job.Shell = "/bin/sh -x"
 	}
 
 	// lastly, set the built environment variables + artifacts

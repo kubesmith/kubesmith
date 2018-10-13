@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	appListersv1 "k8s.io/client-go/listers/apps/v1"
 	batchListersv1 "k8s.io/client-go/listers/batch/v1"
+	coreListersv1 "k8s.io/client-go/listers/core/v1"
 )
 
 func NewPipelineExecutor(
@@ -19,6 +20,7 @@ func NewPipelineExecutor(
 	pipelineLister kubesmithListersv1.PipelineLister,
 	deploymentLister appListersv1.DeploymentLister,
 	jobLister batchListersv1.JobLister,
+	configMapLister coreListersv1.ConfigMapLister,
 ) *PipelineExecutor {
 	return &PipelineExecutor{
 		Pipeline:            pipeline.DeepCopy(),
@@ -30,5 +32,6 @@ func NewPipelineExecutor(
 		pipelineLister:      pipelineLister,
 		deploymentLister:    deploymentLister,
 		jobLister:           jobLister,
+		configMapLister:     configMapLister,
 	}
 }

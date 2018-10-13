@@ -11,6 +11,75 @@ import (
 )
 
 func GetJob(
+	name, image string,
+	shell []string,
+	labels map[string]string,
+) batchv1.Job {
+	return batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   name,
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: utils.Int32Ptr(1),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					RestartPolicy: "Never",
+					Containers: []corev1.Container{
+						corev1.Container{
+							Name:    "pipeline-job",
+							Image:   image,
+							Command: shell,
+							VolumeMounts: []corev1.VolumeMount{
+								corev1.VolumeMount{
+									Name:      "scripts",
+									MountPath: "/kubesmith/scripts/pipeline-script",
+									SubPath:   "pipeline-script",
+									ReadOnly:  false,
+								},
+								corev1.VolumeMount{
+									Name:      "workspace",
+									MountPath: "/kubesmith/workspace",
+								},
+								corev1.VolumeMount{
+									Name:      "artifacts",
+									MountPath: "/kubesmith/artifacts",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						corev1.Volume{
+							Name: "scripts",
+							VolumeSource: corev1.VolumeSource{
+								ConfigMap: &corev1.ConfigMapVolumeSource{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: name,
+									},
+									DefaultMode: utils.Int32Ptr(0777),
+								},
+							},
+						},
+						corev1.Volume{
+							Name: "workspace",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+						corev1.Volume{
+							Name: "artifacts",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func GetJob2(
 	labels map[string]string,
 	pipelineName string,
 	jobName, jobImage string,

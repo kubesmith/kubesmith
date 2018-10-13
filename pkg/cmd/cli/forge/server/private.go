@@ -29,6 +29,7 @@ func (s *Server) runControllers() error {
 		s.kubesmithInformerFactory.Kubesmith().V1().Pipelines().Informer().HasSynced,
 		s.kubeInformerFactory.Apps().V1().Deployments().Informer().HasSynced,
 		s.kubeInformerFactory.Batch().V1().Jobs().Informer().HasSynced,
+		s.kubeInformerFactory.Core().V1().ConfigMaps().Informer().HasSynced,
 	)
 
 	<-s.ctx.Done()
