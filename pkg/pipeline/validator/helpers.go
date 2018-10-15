@@ -126,6 +126,14 @@ func ValidateJobs(jobs []api.PipelineSpecJob, stages []string, templates []api.P
 			}
 		}
 
+		// check the job to make sure it has command/args OR a runner
+		hasCommands := len(job.Command) > 0 || len(job.Args) > 0
+		hasRunner := len(job.Runner) > 0
+
+		if hasCommands && hasRunner {
+			return errors.New("job must have either command/args or runner specified; not both")
+		}
+
 		// check the job has valid environment variables
 		if err := ValidateEnvironmentVariables(job.Environment); err != nil {
 			return err

@@ -232,8 +232,25 @@ func (in *PipelineSpecJob) DeepCopyInto(out *PipelineSpecJob) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.Commands != nil {
-		in, out := &in.Commands, &out.Commands
+	if in.Command != nil {
+		in, out := &in.Command, &out.Command
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.ConfigMapData != nil {
+		in, out := &in.ConfigMapData, &out.ConfigMapData
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Runner != nil {
+		in, out := &in.Runner, &out.Runner
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
@@ -290,6 +307,23 @@ func (in *PipelineSpecJobTemplate) DeepCopyInto(out *PipelineSpecJobTemplate) {
 		in, out := &in.Environment, &out.Environment
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.Command != nil {
+		in, out := &in.Command, &out.Command
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.Args != nil {
+		in, out := &in.Args, &out.Args
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+	if in.ConfigMapData != nil {
+		in, out := &in.ConfigMapData, &out.ConfigMapData
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.Artifacts != nil {
 		in, out := &in.Artifacts, &out.Artifacts

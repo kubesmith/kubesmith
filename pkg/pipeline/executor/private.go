@@ -166,11 +166,11 @@ func (p *PipelineExecutor) getJobResourceName(jobIndex int) string {
 	)
 }
 
-func (p *PipelineExecutor) ensureJobConfigMapExists(name string, commands []string, logger logrus.FieldLogger) error {
+func (p *PipelineExecutor) ensureJobConfigMapExists(name string, configMapData map[string]string, logger logrus.FieldLogger) error {
 	logger.Info("checking to see if configmap for job exists...")
 	if _, err := p.configMapLister.ConfigMaps(p.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
-			resource := jobTemplates.GetJobConfigMap(name, p.GetResourceLabels(), commands)
+			resource := jobTemplates.GetJobConfigMap(name, p.GetResourceLabels(), configMapData)
 			_, err := p.kubeClient.CoreV1().ConfigMaps(p.GetNamespace()).Create(&resource)
 
 			if err != nil {
@@ -188,6 +188,30 @@ func (p *PipelineExecutor) ensureJobConfigMapExists(name string, commands []stri
 	return nil
 }
 
+func (p *PipelineExecutor) getPipelineJobConfigMapData(job api.PipelineSpecJob) map[string]string {
+	if len(job.ConfigMapData) > 0 {
+		return job.ConfigMapData
+	}
+
+	return map[string]string{"pipeline-script.sh": strings.Join(job.Runner, "\n")}
+}
+
+func (p *PipelineExecutor) getPipelineJobCommand(job api.PipelineSpecJob) []string {
+	if len(job.Command) > 0 {
+		return job.Command
+	}
+
+	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
+}
+
+func (p *PipelineExecutor) getPipelineJobArgs(job api.PipelineSpecJob) []string {
+	if len(job.Args) > 0 {
+		return job.Args
+	}
+
+	return []string{}
+}
+
 func (p *PipelineExecutor) scheduleJob(
 	job api.PipelineSpecJob,
 	jobIndex int,
@@ -197,23 +221,24 @@ func (p *PipelineExecutor) scheduleJob(
 	// build a name for these resources
 	name := p.getJobResourceName(jobIndex)
 	namespace := p.GetNamespace()
+	configMapData := p.getPipelineJobConfigMapData(job)
 
 	// ensure the configMap exists (if it's needed)
-	if err := p.ensureJobConfigMapExists(name, job.Commands, logger); err != nil {
-		return err
+	if len(configMapData) > 0 {
+		if err := p.ensureJobConfigMapExists(name, configMapData, logger); err != nil {
+			return err
+		}
 	}
 
 	// now, ensure the job exists
 	logger.Info("checking to see if job exists...")
 	if _, err := p.jobLister.Jobs(namespace).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
-			shellParts := strings.Split(job.Shell, " ")
-			shellParts = append(shellParts, "/kubesmith/scripts/pipeline-script")
-
 			resource := jobTemplates.GetJob(
 				name,
 				job.Image,
-				shellParts,
+				p.getPipelineJobCommand(job),
+				p.getPipelineJobArgs(job),
 				p.GetResourceLabels(),
 			)
 
@@ -302,7 +327,6 @@ func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.Pi
 	job := oldJob.DeepCopy()
 	envVars := []string{}
 	artifacts := []api.PipelineSpecJobArtifact{}
-	oldShell := job.Shell
 
 	// if this job doesn't extend anything, we're done
 	if len(job.Extends) == 0 {
@@ -334,6 +358,33 @@ func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.Pi
 			envVars = append(envVars, env)
 		}
 
+		// if the command is specified, overwrite the job's command
+		if len(oldJob.Command) == 0 && len(template.Command) > 0 {
+			job.Command = []string{}
+
+			for _, value := range template.Command {
+				job.Command = append(job.Command, value)
+			}
+		}
+
+		// if the args are specified, overwrite the job's args
+		if len(oldJob.Args) == 0 && len(template.Args) > 0 {
+			job.Args = []string{}
+
+			for _, value := range template.Args {
+				job.Args = append(job.Args, value)
+			}
+		}
+
+		// if the configmap data was specified, overwrite it
+		if len(oldJob.ConfigMapData) == 0 && len(template.ConfigMapData) > 0 {
+			job.ConfigMapData = map[string]string{}
+
+			for key, value := range template.ConfigMapData {
+				job.ConfigMapData[key] = value
+			}
+		}
+
 		// add the artifacts from this template (if any were specified)
 		for _, artifact := range template.Artifacts {
 			artifacts = append(artifacts, artifact)
@@ -344,12 +395,6 @@ func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.Pi
 		// append but an overwrite
 		if len(template.OnlyOn) > 0 {
 			job.OnlyOn = template.OnlyOn
-		}
-
-		// if the template specifies a "Shell" value, overwrite the current one (if
-		// the job didn't have one specified)
-		if template.Shell != "" && oldShell == "" {
-			job.Shell = template.Shell
 		}
 	}
 
@@ -365,15 +410,6 @@ func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.Pi
 	// if the job had any artifacts specified, add them last
 	for _, artifact := range job.Artifacts {
 		artifacts = append(artifacts, artifact)
-	}
-
-	// add the command to write the IPC file
-	job.Commands = append(job.Commands, "touch /kubesmith/kubesmith-pipeline-flag-file")
-
-	// check to see if this job has a default shell, if it doesn't specify the
-	// default shell
-	if job.Shell == "" {
-		job.Shell = "/bin/sh -x"
 	}
 
 	// lastly, set the built environment variables + artifacts
