@@ -27,10 +27,10 @@ func NewPipelineController(
 	configMapsInformer coreInformersv1.ConfigMapInformer,
 ) controllers.Interface {
 	c := &PipelineController{
-		GenericController:   generic.NewGenericController("pipeline"),
+		GenericController:   generic.NewGenericController("Pipeline"),
 		namespace:           namespace,
 		maxRunningPipelines: maxRunningPipelines,
-		logger:              logger.WithField("controller", "pipeline"),
+		logger:              logger.WithField("controller", "Pipeline"),
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
 		pipelineLister:      pipelineInformer.Lister(),

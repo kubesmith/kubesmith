@@ -23,9 +23,8 @@ func NewPipelineExecutor(
 	configMapLister coreListersv1.ConfigMapLister,
 ) *PipelineExecutor {
 	return &PipelineExecutor{
-		Pipeline:            pipeline.DeepCopy(),
 		MaxRunningPipelines: maxRunningPipelines,
-		_cachedPipeline:     pipeline,
+		_cachedPipeline:     *pipeline.DeepCopy(),
 		logger:              logger,
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,

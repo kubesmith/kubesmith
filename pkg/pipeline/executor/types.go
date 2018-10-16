@@ -12,7 +12,6 @@ import (
 )
 
 type PipelineExecutor struct {
-	Pipeline            *api.Pipeline
 	MaxRunningPipelines int
 
 	_cachedPipeline api.Pipeline

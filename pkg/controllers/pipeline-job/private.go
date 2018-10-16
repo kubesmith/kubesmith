@@ -3,7 +3,6 @@ package pipelinejob
 import (
 	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
-	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,9 +42,15 @@ func (c *PipelineJobController) processPipelineJob(key string) error {
 func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, pipeline v1.Pipeline) error {
 	c.logger.Warn("todo: handle allowFailure for pipeline job")
 
-	updated := utils.SetPipelineToFailed(*pipeline.DeepCopy(), "job failed")
+	pl := *pipeline.DeepCopy()
+	pl.SetPipelineToFailed("job failed")
 
-	if _, err := utils.PatchPipeline(pipeline, updated, c.kubesmithClient); err != nil {
+	patchType, patchBytes, err := pl.GetPatchFromOriginal(pipeline)
+	if err != nil {
+		return err
+	}
+
+	if _, err := c.kubesmithClient.Pipelines(pl.GetNamespace()).Patch(pl.GetName(), patchType, patchBytes); err != nil {
 		return errors.Wrap(err, "could not update pipeline phase to failed")
 	}
 
@@ -78,7 +83,7 @@ func (c *PipelineJobController) jobIsPipelineJob(job *batchv1.Job) bool {
 	expectedLabels := []string{
 		"PipelineName",
 		"PipelineNamespace",
-		"PipelineMD5",
+		"PipelineID",
 	}
 	actualLabels := job.GetLabels()
 

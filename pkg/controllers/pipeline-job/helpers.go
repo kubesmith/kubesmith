@@ -21,8 +21,8 @@ func NewPipelineJobController(
 	jobsInformer batchInformersv1.JobInformer,
 ) controllers.Interface {
 	c := &PipelineJobController{
-		GenericController: generic.NewGenericController("pipeline"),
-		logger:            logger.WithField("controller", "pipelineJob"),
+		GenericController: generic.NewGenericController("PipelineJob"),
+		logger:            logger.WithField("controller", "PipelineJob"),
 		kubeClient:        kubeClient,
 		kubesmithClient:   kubesmithClient,
 		pipelineLister:    pipelineInformer.Lister(),

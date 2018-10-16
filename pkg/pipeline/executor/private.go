@@ -11,21 +11,21 @@ import (
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	jobTemplates "github.com/kubesmith/kubesmith/pkg/pipeline/jobs/templates"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
-	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
 func (p *PipelineExecutor) canRunAnotherPipeline() (bool, error) {
-	pipelines, err := p.pipelineLister.Pipelines(p._cachedPipeline.Namespace).List(labels.Everything())
+	pl := p.GetCachedPipeline()
+	pipelines, err := p.pipelineLister.Pipelines(pl.GetNamespace()).List(labels.Everything())
 	if err != nil {
 		return false, errors.Wrap(err, "could not list pipelines")
 	}
 
 	currentlyRunning := 0
 	for _, pipeline := range pipelines {
-		if pipeline.Status.Phase == api.PipelinePhaseRunning {
+		if pipeline.IsRunning() {
 			currentlyRunning++
 		}
 	}
@@ -37,29 +37,43 @@ func (p *PipelineExecutor) canRunAnotherPipeline() (bool, error) {
 	return false, nil
 }
 
+func (p *PipelineExecutor) patchPipeline(pipeline api.Pipeline) (*api.Pipeline, error) {
+	cached := p.GetCachedPipeline()
+	patchType, patchBytes, err := pipeline.GetPatchFromOriginal(cached)
+	if err != nil {
+		return nil, err
+	}
+
+	updated, err := p.kubesmithClient.Pipelines(cached.GetNamespace()).Patch(cached.GetName(), patchType, patchBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	p._cachedPipeline = *updated
+	return updated.DeepCopy(), nil
+}
+
 func (p *PipelineExecutor) processEmptyPhasePipeline() error {
-	// first, validate the pipeline before doing anything
 	p.logger.Info("validating pipeline...")
 	if err := p.Validate(); err != nil {
-		p.logger.Error("could not validate pipeline")
-		p.logger.Error(err)
+		p.logger.Error(errors.Wrap(err, "could not validate pipeline"))
 
 		p.logger.Info("marking pipeline as failed")
-		if err := p.SetPipelineToFailed(err.Error()); err != nil {
-			p.logger.Error("could not mark pipeline as failed")
-			p.logger.Error(err)
+		pl := p.GetCachedPipeline()
+		pl.SetPipelineToFailed(err.Error())
+		if _, err := p.patchPipeline(pl); err != nil {
+			p.logger.Error(errors.Wrap(err, "could not mark pipeline as failed"))
 		}
 
 		return err
 	}
+
 	p.logger.Info("finished validating pipeline")
-
-	// lastly, set the pipeline status to queued
 	p.logger.Info("marking pipeline as queued...")
-	if err := p.SetPipelineToQueued(); err != nil {
-		p.logger.Error("could not set pipeline to running")
-		p.logger.Error(err)
-
+	pl := p.GetCachedPipeline()
+	pl.SetPipelineToQueued()
+	if _, err := p.patchPipeline(pl); err != nil {
+		p.logger.Error(errors.Wrap(err, "could not set pipeline to running"))
 		return err
 	}
 	p.logger.Info("marked pipeline as queued")
@@ -68,60 +82,48 @@ func (p *PipelineExecutor) processEmptyPhasePipeline() error {
 }
 
 func (p *PipelineExecutor) processQueuedPipeline() error {
-	// check to see if we can run another pipeline in this namespace
 	p.logger.Info("checking to see if we can run another pipeline in this namespace")
 	canRunAnotherPipeline, err := p.canRunAnotherPipeline()
 	if err != nil {
-		p.logger.Error("could not check to see if we could run another pipeline")
-		p.logger.Error(err)
+		p.logger.Error(errors.Wrap(err, "could not check to see if we could run another pipeline"))
 		return err
 	}
 
 	if !canRunAnotherPipeline {
-		// don't do anything, disregard this queue update
 		p.logger.Warn("cannot run another pipeline in this namespace")
 		return nil
 	}
 
-	// next, mark the pipeline as running
 	p.logger.Info("marking pipeline as running...")
-	if err := p.SetPipelineToRunning(); err != nil {
-		p.logger.Error("could not set pipeline to running")
-		p.logger.Error(err)
-
+	pl := p.GetCachedPipeline()
+	pl.SetPipelineToRunning()
+	if _, err := p.patchPipeline(pl); err != nil {
+		p.logger.Error(errors.Wrap(err, "could not set pipeline to running"))
 		return err
 	}
-	p.logger.Info("marked pipeline as running")
 
+	p.logger.Info("marked pipeline as running")
 	return nil
 }
 
-// make sure minio server is bootstrapped
-// 		if any issues, mark pipeline as failed
-//		if minio server did not exist, create it
-// wait for minio server to be "ready"
-// create the pipeline jobs for current stage in the system
 func (p *PipelineExecutor) processRunningPipeline() error {
-	// ensure the minio server exists
+	pl := p.GetCachedPipeline()
 	p.logger.Info("ensuring minio server resources are scheduled...")
 	minioServer := minio.NewMinioServer(
-		p.GetNamespace(),
-		p.GetResourcePrefix(),
-		p.GetResourceLabels(),
+		pl.GetNamespace(),
+		pl.GetResourcePrefix(),
+		pl.GetResourceLabels(),
 		p.logger,
 		p.kubeClient,
 		p.deploymentLister,
 	)
 
 	if err := minioServer.Create(); err != nil {
-		p.logger.Error("could not ensure minio server resources are scheduled")
-		p.logger.Error(err)
+		p.logger.Error(errors.Wrap(err, "could not ensure minio server resources are scheduled"))
 		return err
 	}
 
 	p.logger.Info("minio server resources are scheduled")
-
-	// wait for minio server to be ready
 	p.logger.Info("waiting for minio server to be available...")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancelFunc()
@@ -134,10 +136,8 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 	}
 
 	p.logger.Info("minio server is available!")
-
-	// lastly, ensure all of the jobs for this pipeline stage have been scheduled
 	p.logger.Info("ensuring jobs are scheduled")
-	for index, job := range p.getExpandedJobsForCurrentStage() {
+	for index, job := range pl.GetExpandedJobsForCurrentStage() {
 		jobIndex := index + 1
 		logger := p.logger.WithField("JobIndex", jobIndex)
 
@@ -156,20 +156,24 @@ func (p *PipelineExecutor) processRunningPipeline() error {
 }
 
 func (p *PipelineExecutor) getJobResourceName(jobIndex int) string {
+	pl := p.GetCachedPipeline()
+
 	return fmt.Sprintf(
 		"%s-stage-%d-job-%d",
-		p.GetResourcePrefix(),
+		pl.GetResourcePrefix(),
 		p._cachedPipeline.Status.StageIndex,
 		jobIndex,
 	)
 }
 
 func (p *PipelineExecutor) ensureJobConfigMapExists(name string, configMapData map[string]string, logger logrus.FieldLogger) error {
+	pl := p.GetCachedPipeline()
+
 	logger.Info("checking to see if configmap for job exists...")
-	if _, err := p.configMapLister.ConfigMaps(p.GetNamespace()).Get(name); err != nil {
+	if _, err := p.configMapLister.ConfigMaps(pl.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
-			resource := jobTemplates.GetJobConfigMap(name, p.GetResourceLabels(), configMapData)
-			_, err := p.kubeClient.CoreV1().ConfigMaps(p.GetNamespace()).Create(&resource)
+			resource := jobTemplates.GetJobConfigMap(name, pl.GetResourceLabels(), configMapData)
+			_, err := p.kubeClient.CoreV1().ConfigMaps(pl.GetNamespace()).Create(&resource)
 
 			if err != nil {
 				return errors.Wrap(err, "could not create configmap for job")
@@ -217,8 +221,8 @@ func (p *PipelineExecutor) scheduleJob(
 	logger logrus.FieldLogger,
 ) error {
 	// build a name for these resources
+	pl := p.GetCachedPipeline()
 	name := p.getJobResourceName(jobIndex)
-	namespace := p.GetNamespace()
 	configMapData := p.getPipelineJobConfigMapData(job)
 
 	// ensure the configMap exists (if it's needed)
@@ -230,19 +234,17 @@ func (p *PipelineExecutor) scheduleJob(
 
 	// now, ensure the job exists
 	logger.Info("checking to see if job exists...")
-	if _, err := p.jobLister.Jobs(namespace).Get(name); err != nil {
+	if _, err := p.jobLister.Jobs(pl.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
 			resource := jobTemplates.GetJob(
 				name,
 				job.Image,
 				p.getPipelineJobCommand(job),
 				p.getPipelineJobArgs(job),
-				p.GetResourceLabels(),
+				pl.GetResourceLabels(),
 			)
 
-			_, err := p.kubeClient.BatchV1().Jobs(namespace).Create(&resource)
-
-			if err != nil {
+			if _, err := p.kubeClient.BatchV1().Jobs(pl.GetNamespace()).Create(&resource); err != nil {
 				return errors.Wrap(err, "could not create job")
 			}
 
@@ -261,153 +263,4 @@ func (p *PipelineExecutor) scheduleJob(
 func (p *PipelineExecutor) processFinishedPipeline() error {
 	p.logger.Info("todo: processing finished pipeline")
 	return nil
-}
-
-func (p *PipelineExecutor) patchPipeline() error {
-	updated, err := utils.PatchPipeline(p._cachedPipeline, *p.Pipeline, p.kubesmithClient)
-	if err != nil {
-		return err
-	}
-
-	p._cachedPipeline = *updated
-	p.Pipeline = updated.DeepCopy()
-	return nil
-}
-
-func (p *PipelineExecutor) getCurrentStageName() string {
-	currentStage := p._cachedPipeline.Status.StageIndex
-
-	if currentStage == 0 {
-		return ""
-	} else if currentStage > len(p._cachedPipeline.Spec.Stages) {
-		return ""
-	}
-
-	return p.Pipeline.Spec.Stages[currentStage-1]
-}
-
-func (p *PipelineExecutor) getExpandedJobsForCurrentStage() []api.PipelineSpecJob {
-	jobs := []api.PipelineSpecJob{}
-	stageName := strings.ToLower(p.getCurrentStageName())
-
-	if stageName == "" {
-		return jobs
-	}
-
-	for _, original := range p._cachedPipeline.Spec.Jobs {
-		job := original.DeepCopy()
-		if strings.ToLower(job.Stage) == stageName {
-			jobs = append(jobs, *p.expandPipelineJob(*job))
-		}
-	}
-
-	return jobs
-}
-
-func (p *PipelineExecutor) expandPipelineJob(oldJob api.PipelineSpecJob) *api.PipelineSpecJob {
-	job := oldJob.DeepCopy()
-	envVars := []string{}
-	artifacts := []api.PipelineSpecJobArtifact{}
-
-	// if this job doesn't extend anything, we're done
-	if len(job.Extends) == 0 {
-		return job
-	}
-
-	// loop through the pipeline's global environment variables and add them first
-	for _, env := range p._cachedPipeline.Spec.Environment {
-		envVars = append(envVars, env)
-	}
-
-	// loop through the job's specified extensions and use each extension to mutate
-	// the job in the order they were specified
-	for _, templateName := range job.Extends {
-		template, _ := p.getTemplateByName(templateName)
-
-		// if there was no template by that name, keep moving on
-		if template == nil {
-			continue
-		}
-
-		// if the template has an image specified, overwrite the job's image
-		if template.Image != "" {
-			job.Image = template.Image
-		}
-
-		// add the environment variables from this template
-		for _, env := range template.Environment {
-			envVars = append(envVars, env)
-		}
-
-		// if the command is specified, overwrite the job's command
-		if len(oldJob.Command) == 0 && len(template.Command) > 0 {
-			job.Command = []string{}
-
-			for _, value := range template.Command {
-				job.Command = append(job.Command, value)
-			}
-		}
-
-		// if the args are specified, overwrite the job's args
-		if len(oldJob.Args) == 0 && len(template.Args) > 0 {
-			job.Args = []string{}
-
-			for _, value := range template.Args {
-				job.Args = append(job.Args, value)
-			}
-		}
-
-		// if the configmap data was specified, overwrite it
-		if len(oldJob.ConfigMapData) == 0 && len(template.ConfigMapData) > 0 {
-			job.ConfigMapData = map[string]string{}
-
-			for key, value := range template.ConfigMapData {
-				job.ConfigMapData[key] = value
-			}
-		}
-
-		// add the artifacts from this template (if any were specified)
-		for _, artifact := range template.Artifacts {
-			artifacts = append(artifacts, artifact)
-		}
-
-		// if the template specifies an "OnlyOn" value, overwrite the current one
-		// anyone using "OnlyOn" in a pipeline job needs to understand this isn't an
-		// append but an overwrite
-		if len(template.OnlyOn) > 0 {
-			job.OnlyOn = template.OnlyOn
-		}
-	}
-
-	// now that we've looped through the templates, we have all of the environment
-	// variables and artifacts.
-
-	// if the job had any environment variables specified, add them last (so they
-	// overwrite any previously defined variables)
-	for _, env := range job.Environment {
-		envVars = append(envVars, env)
-	}
-
-	// if the job had any artifacts specified, add them last
-	for _, artifact := range job.Artifacts {
-		artifacts = append(artifacts, artifact)
-	}
-
-	// lastly, set the built environment variables + artifacts
-	job.Environment = envVars
-	job.Artifacts = artifacts
-
-	return job
-}
-
-func (p *PipelineExecutor) getTemplateByName(name string) (*api.PipelineSpecJobTemplate, error) {
-	name = strings.ToLower(name)
-
-	for _, template := range p._cachedPipeline.Spec.Templates {
-		if strings.ToLower(template.Name) == name {
-			return &template, nil
-		}
-	}
-
-	return nil, errors.New("template does not exist")
 }
