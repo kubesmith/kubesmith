@@ -13,6 +13,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline"
+	pipelinejob "github.com/kubesmith/kubesmith/pkg/controllers/pipeline-job"
 	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -80,6 +81,14 @@ func NewServer(o *Options) *Server {
 		kubeInformerFactory.Core().V1().ConfigMaps(),
 	)
 
+	pipelineJobController := pipelinejob.NewPipelineJobController(
+		logger,
+		o.kubeClient,
+		o.client.KubesmithV1(),
+		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
+		kubeInformerFactory.Batch().V1().Jobs(),
+	)
+
 	// finally, return the server
 	return &Server{
 		options:    o,
@@ -93,6 +102,7 @@ func NewServer(o *Options) *Server {
 		kubesmithInformerFactory: kubesmithInformerFactory,
 		kubeInformerFactory:      kubeInformerFactory,
 		pipelineController:       pipelineController,
+		pipelineJobController:    pipelineJobController,
 	}
 }
 

@@ -2,21 +2,19 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
 
-	jsonpatch "github.com/evanphx/json-patch"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	jobTemplates "github.com/kubesmith/kubesmith/pkg/pipeline/jobs/templates"
 	"github.com/kubesmith/kubesmith/pkg/pipeline/minio"
+	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 func (p *PipelineExecutor) canRunAnotherPipeline() (bool, error) {
@@ -266,30 +264,13 @@ func (p *PipelineExecutor) processFinishedPipeline() error {
 }
 
 func (p *PipelineExecutor) patchPipeline() error {
-	p.Pipeline.Status.LastUpdated.Time = time.Now()
-
-	origBytes, err := json.Marshal(p._cachedPipeline)
+	updated, err := utils.PatchPipeline(p._cachedPipeline, *p.Pipeline, p.kubesmithClient)
 	if err != nil {
-		return errors.Wrap(err, "error marshalling original pipeline")
+		return err
 	}
 
-	updatedBytes, err := json.Marshal(p.Pipeline)
-	if err != nil {
-		return errors.Wrap(err, "error marshalling updated pipeline")
-	}
-
-	patchBytes, err := jsonpatch.CreateMergePatch(origBytes, updatedBytes)
-	if err != nil {
-		return errors.Wrap(err, "error creating json merge patch for pipeline")
-	}
-
-	res, err := p.kubesmithClient.Pipelines(p.GetNamespace()).Patch(p._cachedPipeline.Name, types.MergePatchType, patchBytes)
-	if err != nil {
-		return errors.Wrap(err, "error patching pipeline")
-	}
-
-	p._cachedPipeline = *res
-	p.Pipeline = res.DeepCopy()
+	p._cachedPipeline = *updated
+	p.Pipeline = updated.DeepCopy()
 	return nil
 }
 

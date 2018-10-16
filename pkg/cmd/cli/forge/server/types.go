@@ -31,4 +31,5 @@ type Server struct {
 	kubesmithInformerFactory kubesmithInformers.SharedInformerFactory
 	kubeInformerFactory      kubeInformers.SharedInformerFactory
 	pipelineController       controllers.Interface
+	pipelineJobController    controllers.Interface
 }

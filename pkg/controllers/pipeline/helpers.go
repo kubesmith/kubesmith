@@ -30,7 +30,7 @@ func NewPipelineController(
 		GenericController:   generic.NewGenericController("pipeline"),
 		namespace:           namespace,
 		maxRunningPipelines: maxRunningPipelines,
-		logger:              logger,
+		logger:              logger.WithField("controller", "pipeline"),
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
 		pipelineLister:      pipelineInformer.Lister(),

@@ -19,6 +19,13 @@ func (s *Server) runControllers() error {
 		wg.Done()
 	}()
 
+	// start the pipeline job controller
+	wg.Add(1)
+	go func() {
+		s.pipelineJobController.Run(s.ctx, 1)
+		wg.Done()
+	}()
+
 	// start the shared informers after all of our controllers
 	go s.kubesmithInformerFactory.Start(s.ctx.Done())
 	go s.kubeInformerFactory.Start(s.ctx.Done())
