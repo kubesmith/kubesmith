@@ -1,7 +1,7 @@
-package templates
+package minio
 
 import (
-	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
+	"github.com/kubesmith/kubesmith/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

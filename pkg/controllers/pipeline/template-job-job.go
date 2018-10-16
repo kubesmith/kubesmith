@@ -1,7 +1,7 @@
-package templates
+package pipeline
 
 import (
-	"github.com/kubesmith/kubesmith/pkg/pipeline/utils"
+	"github.com/kubesmith/kubesmith/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

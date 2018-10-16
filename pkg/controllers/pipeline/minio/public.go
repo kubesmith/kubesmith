@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kubesmith/kubesmith/pkg/pipeline/minio/templates"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,7 +20,7 @@ func (m *MinioServer) CreateSecret() error {
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			resource := templates.GetMinioSecret(resourceName, m.ResourceLabels)
+			resource := GetMinioSecret(resourceName, m.ResourceLabels)
 			secret, err = m.kubeClient.CoreV1().Secrets(m.Namespace).Create(&resource)
 
 			if err != nil {
@@ -45,7 +44,7 @@ func (m *MinioServer) CreateDeployment() error {
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			resource := templates.GetMinioDeployment(resourceName, m.ResourceLabels, *m.minioSecret)
+			resource := GetMinioDeployment(resourceName, m.ResourceLabels, *m.minioSecret)
 			deployment, err = m.kubeClient.AppsV1().Deployments(m.Namespace).Create(&resource)
 
 			if err != nil {
@@ -68,7 +67,7 @@ func (m *MinioServer) CreateService() error {
 	service, err := m.kubeClient.CoreV1().Services(m.Namespace).Get(resourceName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			resource := templates.GetMinioService(resourceName, m.ResourceLabels)
+			resource := GetMinioService(resourceName, m.ResourceLabels)
 			service, err = m.kubeClient.CoreV1().Services(m.Namespace).Create(&resource)
 
 			if err != nil {

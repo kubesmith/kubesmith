@@ -1,26 +1,10 @@
 package utils
 
 import (
-	"crypto/md5"
 	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	mathrand "math/rand"
 	"time"
 )
-
-func GetMD5(value string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(value))
-
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func GetPipelineMD5(name, namespace string) string {
-	value := fmt.Sprintf("%s:%s", name, namespace)
-
-	return GetMD5(value)
-}
 
 func GenerateRandomString(s int, letters ...string) string {
 	randomFactor := make([]byte, 1)
