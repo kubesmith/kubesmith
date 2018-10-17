@@ -16,33 +16,40 @@ spec:
     image: golang
 
   stages:
-  - linting
-  - testing
-  - doing-something-else
+  - first
+  - second
+  - third
 
   jobs:
-  - name: lint code
-    stage: linting
+  - name: do something super easy using the built in runner (keeps syntax simple)
+    stage: first
+    image: ubuntu
+    runner:
+    - ls -la
+
+  - name: do something that requires more time
+    stage: second
     extends:
     - default
     command: ["/bin/sh", "-x", "/kubesmith/scripts/my-script.sh"]
-    args: []
     configMapData:
       my-script.sh: |
-        #!/bin/sh -x
-
         go get -u golang.org/x/lint/golint
         golint ./
     allowFailure: true
 
-  - name: do something to test second stage
-    stage: testing
-    image: ubuntu
-    runner:
-    - ls -la
-
-  - name: do something else for numero tres
-    stage: doing-something-else
-    image: ubuntu
-    runner:
-    - ls -la
+  - name: demonstrate multiple script calls from one configuration
+    stage: third
+    image: busybox
+    command: ["/bin/sh", "-c"]
+    args:
+    - /bin/sh -x /kubesmith/scripts/first-script.sh;
+      /bin/sh -x /kubesmith/scripts/second-script.sh;
+      /bin/sh -x /kubesmith/scripts/third-script.sh;
+    configMapData:
+      first-script.sh: |
+        echo "hello from first script\n"
+      second-script.sh: |
+        echo "hello from second script\n"
+      third-script.sh: |
+        echo "hello from third script\n"
