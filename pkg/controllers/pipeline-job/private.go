@@ -1,11 +1,15 @@
 package pipelinejob
 
 import (
-	"github.com/golang/glog"
-	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"fmt"
+	"strings"
+
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -15,54 +19,120 @@ func (c *PipelineJobController) processPipelineJob(key string) error {
 		return errors.Wrap(err, "error splitting queue key")
 	}
 
+	c.logger.Info("retrieving pipeline job...")
 	pipelineJob, err := c.jobLister.Jobs(ns).Get(name)
 	if apierrors.IsNotFound(err) {
-		glog.V(1).Info("unable to find pipeline job")
+		c.logger.Error("pipeline job does not exist")
 		return nil
 	} else if err != nil {
-		return errors.Wrap(err, "error getting pipeline job")
-	}
-
-	// check to see if the correlated pipeline still exists
-	pipeline, err := c.getPipelineFromJobLabels(pipelineJob)
-	if err != nil {
+		err = errors.Wrap(err, "error retrieving pipeline job")
+		c.logger.Error(err)
 		return err
 	}
+	c.logger.Info("retrieved pipeline job")
+
+	// check to see if the correlated pipeline still exists
+	c.logger.Info("retrieving pipeline from pipeline job...")
+	pipeline, err := c.getPipelineFromJobLabels(pipelineJob)
+	if err != nil {
+		c.logger.Error(errors.Wrap(err, "could not retrieve pipeline from pipeline job"))
+		return err
+	}
+
+	tmpLogger := c.logger.WithFields(logrus.Fields{
+		"PipelineName":      pipeline.GetName(),
+		"PipelineNamespace": pipeline.GetNamespace(),
+	})
+	tmpLogger.Info("retrieved pipeline from pipeline job")
 
 	// check to see the outcome of the job
 	if pipelineJob.Status.Failed == 1 {
-		return c.processFailedPipelineJob(pipelineJob, *pipeline)
+		return c.processFailedPipelineJob(pipelineJob, *pipeline, tmpLogger.WithField("Status", "Failed"))
 	} else if pipelineJob.Status.Succeeded == 1 {
-		return c.processSucceededPipelineJob(pipelineJob, *pipeline)
+		return c.processSucceededPipelineJob(pipelineJob, *pipeline, tmpLogger.WithField("Status", "Succeeded"))
 	}
 
 	return nil
 }
 
-func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, pipeline v1.Pipeline) error {
-	c.logger.Warn("todo: handle allowFailure for pipeline job")
+func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Warn("todo: handle allowFailure for pipeline job")
+	return nil
+}
 
-	pl := *pipeline.DeepCopy()
-	pl.SetPipelineToFailed("job failed")
-
-	patchType, patchBytes, err := pl.GetPatchFromOriginal(pipeline)
+func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
+	jobsAreFinished, err := c.pipelineJobsAreFinishedForCurrentStage(originalPipeline, logger)
 	if err != nil {
+		logger.Error(err)
 		return err
 	}
 
-	if _, err := c.kubesmithClient.Pipelines(pl.GetNamespace()).Patch(pl.GetName(), patchType, patchBytes); err != nil {
-		return errors.Wrap(err, "could not update pipeline phase to failed")
+	if !jobsAreFinished {
+		logger.Info("skipping... job is not last in current stage")
+		return nil
+	}
+
+	pipeline := *originalPipeline.DeepCopy()
+	pipeline.AdvanceCurrentStage()
+	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
+		err = errors.Wrap(err, "could not update advanced pipeline")
+		logger.Error(err)
+		return err
 	}
 
 	return nil
 }
 
-func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, pipeline v1.Pipeline) error {
-	c.logger.Warn("todo: handle succeeded pipeline job")
-	return nil
+func (c *PipelineJobController) pipelineJobsAreFinishedForCurrentStage(pipeline api.Pipeline, logger logrus.FieldLogger) (bool, error) {
+	logger.Info("getting scheduled jobs...")
+	scheduledJobs, err := c.getPipelineJobsForCurrentStage(pipeline)
+	if err != nil {
+		logger.Error(errors.Wrap(err, "could not get scheduled jobs for pipeline"))
+		return false, err
+	}
+	logger.Info("got scheduled jobs for current pipeline stage...")
+
+	totalScheduledJobs := len(scheduledJobs)
+	totalPipelineJobs := len(pipeline.GetExpandedJobsForCurrentStage())
+
+	if totalScheduledJobs == totalPipelineJobs {
+		allJobsHaveFinished := true
+
+		for _, job := range scheduledJobs {
+			if job.Status.Failed == 0 && job.Status.Succeeded == 0 {
+				allJobsHaveFinished = false
+			}
+		}
+
+		return allJobsHaveFinished, nil
+	}
+
+	return false, nil
 }
 
-func (c *PipelineJobController) getPipelineFromJobLabels(job *batchv1.Job) (*v1.Pipeline, error) {
+func (c *PipelineJobController) getPipelineJobsForCurrentStage(pipeline api.Pipeline) ([]*batchv1.Job, error) {
+	allJobs, err := c.jobLister.List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+
+	expectedNamePrefix := fmt.Sprintf(
+		"%s-stage-%d-job-",
+		pipeline.GetResourcePrefix(),
+		pipeline.GetStageIndex(),
+	)
+
+	jobs := []*batchv1.Job{}
+	for _, job := range allJobs {
+		if strings.HasPrefix(job.GetName(), expectedNamePrefix) == true {
+			jobs = append(jobs, job)
+		}
+	}
+
+	return jobs, nil
+}
+
+func (c *PipelineJobController) getPipelineFromJobLabels(job *batchv1.Job) (*api.Pipeline, error) {
 	labels := job.GetLabels()
 	pipeline, err := c.pipelineLister.Pipelines(labels["PipelineNamespace"]).Get(labels["PipelineName"])
 
@@ -95,4 +165,13 @@ func (c *PipelineJobController) jobIsPipelineJob(job *batchv1.Job) bool {
 
 	// everything checks out, this seems like a valid pipeline job
 	return true
+}
+
+func (c *PipelineJobController) patchPipeline(updated, original api.Pipeline) (*api.Pipeline, error) {
+	patchType, patchBytes, err := updated.GetPatchFromOriginal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.kubesmithClient.Pipelines(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
 }

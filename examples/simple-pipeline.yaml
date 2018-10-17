@@ -16,25 +16,26 @@ spec:
     image: golang
 
   stages:
-  # - linting
+  - linting
   - testing
 
   jobs:
+  - name: lint code
+    stage: linting
+    extends:
+    - default
+    command: ["/bin/sh", "-x", "/kubesmith/scripts/my-script.sh"]
+    args: []
+    configMapData:
+      my-script.sh: |
+        #!/bin/sh -x
+
+        go get -u golang.org/x/lint/golint
+        golint ./
+    allowFailure: true
+
   - name: do something to test second stage
     stage: testing
     image: ubuntu
     runner:
     - ls -la
-  # - name: lint code
-  #   stage: linting
-  #   extends:
-  #   - default
-  #   command: ["/bin/sh", "-x", "/kubesmith/scripts/my-script.sh"]
-  #   args: []
-  #   configMapData:
-  #     my-script.sh: |
-  #       #!/bin/sh -x
-
-  #       go get -u golang.org/x/lint/golint
-  #       golint ./
-  #   allowFailure: true

@@ -464,7 +464,7 @@ func (p *Pipeline) ValidateStages() error {
 }
 
 func (p *Pipeline) ValidateJobs() error {
-	jobs := p.GetJobs()
+	jobs := p.GetExpandedJobs()
 	stages := p.GetStages()
 	templates := p.GetTemplates()
 
@@ -549,4 +549,15 @@ func (p *Pipeline) Validate() error {
 	}
 
 	return p.ValidateJobs()
+}
+
+func (p *Pipeline) AdvanceCurrentStage() {
+	stageIndex := p.GetStageIndex() + 1
+
+	if stageIndex > len(p.GetStages()) {
+		p.SetPipelineToCompleted()
+		return
+	}
+
+	p.Status.StageIndex = stageIndex
 }
