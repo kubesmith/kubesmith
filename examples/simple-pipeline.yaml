@@ -18,6 +18,7 @@ spec:
   stages:
   - linting
   - testing
+  - doing-something-else
 
   jobs:
   - name: lint code
@@ -36,6 +37,12 @@ spec:
 
   - name: do something to test second stage
     stage: testing
+    image: ubuntu
+    runner:
+    - ls -la
+
+  - name: do something else for numero tres
+    stage: doing-something-else
     image: ubuntu
     runner:
     - ls -la

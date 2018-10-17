@@ -19,27 +19,32 @@ func (c *PipelineJobController) processPipelineJob(key string) error {
 		return errors.Wrap(err, "error splitting queue key")
 	}
 
-	c.logger.Info("retrieving pipeline job...")
+	tmpLogger := c.logger.WithFields(logrus.Fields{
+		"JobName":      name,
+		"JobNamespace": ns,
+	})
+
+	tmpLogger.Info("retrieving pipeline job...")
 	pipelineJob, err := c.jobLister.Jobs(ns).Get(name)
 	if apierrors.IsNotFound(err) {
-		c.logger.Error("pipeline job does not exist")
+		tmpLogger.Error("pipeline job does not exist")
 		return nil
 	} else if err != nil {
 		err = errors.Wrap(err, "error retrieving pipeline job")
-		c.logger.Error(err)
+		tmpLogger.Error(err)
 		return err
 	}
-	c.logger.Info("retrieved pipeline job")
+	tmpLogger.Info("retrieved pipeline job")
 
 	// check to see if the correlated pipeline still exists
-	c.logger.Info("retrieving pipeline from pipeline job...")
+	tmpLogger.Info("retrieving pipeline from pipeline job...")
 	pipeline, err := c.getPipelineFromJobLabels(pipelineJob)
 	if err != nil {
-		c.logger.Error(errors.Wrap(err, "could not retrieve pipeline from pipeline job"))
+		tmpLogger.Error(errors.Wrap(err, "could not retrieve pipeline from pipeline job"))
 		return err
 	}
 
-	tmpLogger := c.logger.WithFields(logrus.Fields{
+	tmpLogger = tmpLogger.WithFields(logrus.Fields{
 		"PipelineName":      pipeline.GetName(),
 		"PipelineNamespace": pipeline.GetNamespace(),
 	})
@@ -50,12 +55,15 @@ func (c *PipelineJobController) processPipelineJob(key string) error {
 		return c.processFailedPipelineJob(pipelineJob, *pipeline, tmpLogger.WithField("Status", "Failed"))
 	} else if pipelineJob.Status.Succeeded == 1 {
 		return c.processSucceededPipelineJob(pipelineJob, *pipeline, tmpLogger.WithField("Status", "Succeeded"))
+	} else {
+		tmpLogger.Info("skipping job since it hasn't been completed yet")
 	}
 
 	return nil
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Warn("todo: finish failed pipeline job")
 	logger.Warn("todo: handle allowFailure for pipeline job")
 	return nil
 }
