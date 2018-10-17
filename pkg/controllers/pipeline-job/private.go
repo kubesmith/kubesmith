@@ -50,6 +50,12 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 	})
 	tmpLogger.Info("retrieved pipeline from pipeline job")
 
+	// check to see if the pipeline has already finished
+	if pipeline.HasCompleted() || pipeline.HasFailed() {
+		tmpLogger.Info("skipping job because pipeline is finished...")
+		return nil
+	}
+
 	// check to see the outcome of the job
 	if pipelineJob.Status.Failed == 1 {
 		return c.processFailedPipelineJob(pipelineJob, *pipeline, tmpLogger.WithField("Status", "Failed"))

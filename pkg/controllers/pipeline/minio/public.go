@@ -97,16 +97,23 @@ func (m *MinioServer) Create() error {
 	return m.CreateService()
 }
 
+func (m *MinioServer) getDeleteOptions() *metav1.DeleteOptions {
+	propagationPolicy := metav1.DeletePropagationBackground
+	return &metav1.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	}
+}
+
 func (m *MinioServer) DeleteSecret() error {
-	return m.kubeClient.CoreV1().Secrets(m.Namespace).Delete(m.GetResourceName(), &metav1.DeleteOptions{})
+	return m.kubeClient.CoreV1().Secrets(m.Namespace).Delete(m.GetResourceName(), m.getDeleteOptions())
 }
 
 func (m *MinioServer) DeleteDeployment() error {
-	return m.kubeClient.AppsV1().Deployments(m.Namespace).Delete(m.GetResourceName(), &metav1.DeleteOptions{})
+	return m.kubeClient.AppsV1().Deployments(m.Namespace).Delete(m.GetResourceName(), m.getDeleteOptions())
 }
 
 func (m *MinioServer) DeleteService() error {
-	return m.kubeClient.CoreV1().Services(m.Namespace).Delete(m.GetResourceName(), &metav1.DeleteOptions{})
+	return m.kubeClient.CoreV1().Services(m.Namespace).Delete(m.GetResourceName(), m.getDeleteOptions())
 }
 
 func (m *MinioServer) Delete() error {
