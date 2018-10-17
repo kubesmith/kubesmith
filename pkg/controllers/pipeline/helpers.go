@@ -1,12 +1,12 @@
 package pipeline
 
 import (
-	"github.com/golang/glog"
-	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/sirupsen/logrus"
 	appInformersv1 "k8s.io/client-go/informers/apps/v1"
 	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
@@ -52,25 +52,12 @@ func NewPipelineController(
 	pipelineInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				pipeline := obj.(*v1.Pipeline)
-
-				key, err := cache.MetaNamespaceKeyFunc(pipeline)
-				if err != nil {
-					glog.Errorf("Error creating queue key, item not added to queue; name: %s", pipeline.Name)
-					return
-				}
-
-				c.Queue.Add(key)
+				pipeline := obj.(*api.Pipeline)
+				c.Queue.Add(sync.PipelineAddAction(pipeline))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
-				oldPipeline := oldObj.(*v1.Pipeline)
-				updatedPipeline := updatedObj.(*v1.Pipeline)
-
-				key, err := cache.MetaNamespaceKeyFunc(updatedPipeline)
-				if err != nil {
-					glog.Errorf("Error updating queue key, item not added to queue; name: %s", updatedPipeline.Name)
-					return
-				}
+				oldPipeline := oldObj.(*api.Pipeline)
+				updatedPipeline := updatedObj.(*api.Pipeline)
 
 				// create a tmp logger
 				tmpLogger := c.logger.WithFields(logrus.Fields{
@@ -83,17 +70,21 @@ func NewPipelineController(
 				// if the phase changed, react
 				if updatedPipeline.Status.Phase != oldPipeline.Status.Phase {
 					tmpLogger.Info("queueing pipeline: phase changed")
-					c.Queue.Add(key)
+					c.Queue.Add(sync.PipelineUpdateAction(updatedPipeline))
 					return
 				}
 
 				// if the phase is "running" and the stageIndex changed, react
-				isRunningPhase := (updatedPipeline.Status.Phase == v1.PipelinePhaseRunning)
+				isRunningPhase := (updatedPipeline.Status.Phase == api.PipelinePhaseRunning)
 				stageIndexChanged := (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex)
 				if isRunningPhase && stageIndexChanged {
 					tmpLogger.Info("queueing pipeline: stage index advanced")
-					c.Queue.Add(key)
+					c.Queue.Add(sync.PipelineUpdateAction(updatedPipeline))
 				}
+			},
+			DeleteFunc: func(obj interface{}) {
+				pipeline := obj.(*api.Pipeline)
+				c.Queue.Add(sync.PipelineDeleteAction(pipeline))
 			},
 		},
 	)

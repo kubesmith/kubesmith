@@ -3,6 +3,7 @@ package generic
 import (
 	"time"
 
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -10,7 +11,7 @@ import (
 type GenericController struct {
 	Name             string
 	Queue            workqueue.RateLimitingInterface
-	SyncHandler      func(key string) error
+	SyncHandler      func(action sync.SyncAction) error
 	ResyncFunc       func()
 	ResyncPeriod     time.Duration
 	CacheSyncWaiters []cache.InformerSynced

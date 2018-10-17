@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline/minio"
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -17,44 +18,60 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (c *PipelineController) processPipeline(key string) error {
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return errors.Wrap(err, "error splitting queue key")
+func (c *PipelineController) processPipeline(action sync.SyncAction) error {
+	pipeline := action.GetObject().(*api.Pipeline)
+	if pipeline == nil {
+		panic(errors.New("programmer error; pipeline object was nil"))
 	}
 
-	pipeline, err := c.pipelineLister.Pipelines(ns).Get(name)
-	if apierrors.IsNotFound(err) {
-		glog.V(1).Info("unable to find pipeline")
-		return nil
-	} else if err != nil {
-		return errors.Wrap(err, "error getting pipeline")
-	}
+	switch action.GetAction() {
+	case sync.SyncActionDelete:
+		logger := c.logger.WithFields(logrus.Fields{
+			"Name":      pipeline.Name,
+			"Namespace": pipeline.Namespace,
+		})
 
-	// create a new logger for this pipeline's execution
-	fieldLogger := c.logger.WithFields(logrus.Fields{
-		"Name":       pipeline.Name,
-		"Namespace":  pipeline.Namespace,
-		"Phase":      pipeline.Status.Phase,
-		"StageIndex": pipeline.Status.StageIndex,
-	})
+		if err := c.processDeletedPipeline(*pipeline, logger); err != nil {
+			return err
+		}
+	default:
+		pipeline, err := c.pipelineLister.Pipelines(pipeline.GetNamespace()).Get(pipeline.GetName())
+		if apierrors.IsNotFound(err) {
+			glog.V(1).Info("unable to find pipeline")
+			return nil
+		} else if err != nil {
+			return errors.Wrap(err, "error getting pipeline")
+		}
 
-	// determine the phase and begin execution of the pipeline
-	if pipeline.HasNoPhase() {
-		if err := c.processEmptyPhasePipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
-			return err
-		}
-	} else if pipeline.IsQueued() {
-		if err := c.processQueuedPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
-			return err
-		}
-	} else if pipeline.IsRunning() {
-		if err := c.processRunningPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
-			return err
-		}
-	} else if pipeline.HasCompleted() || pipeline.HasFailed() {
-		if err := c.processFinishedPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
-			return err
+		// create a new logger for this pipeline's execution
+		fieldLogger := c.logger.WithFields(logrus.Fields{
+			"Name":       pipeline.Name,
+			"Namespace":  pipeline.Namespace,
+			"Phase":      pipeline.Status.Phase,
+			"StageIndex": pipeline.Status.StageIndex,
+		})
+
+		// determine the phase and begin execution of the pipeline
+		if pipeline.HasNoPhase() {
+			if err := c.processEmptyPhasePipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
+				return err
+			}
+		} else if pipeline.IsQueued() {
+			if err := c.processQueuedPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
+				return err
+			}
+		} else if pipeline.IsRunning() {
+			if err := c.processRunningPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
+				return err
+			}
+		} else if pipeline.HasCompleted() {
+			if err := c.processCompletedPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
+				return err
+			}
+		} else if pipeline.HasFailed() {
+			if err := c.processFailedPipeline(*pipeline.DeepCopy(), fieldLogger); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -156,8 +173,18 @@ func (c *PipelineController) processRunningPipeline(pipeline api.Pipeline, logge
 	return nil
 }
 
-func (c *PipelineController) processFinishedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing finished pipeline")
+func (c *PipelineController) processCompletedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("todo: processing completed pipeline")
+	return nil
+}
+
+func (c *PipelineController) processFailedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("todo: processing failed pipeline")
+	return nil
+}
+
+func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("todo: processing deleted pipeline")
 	return nil
 }
 

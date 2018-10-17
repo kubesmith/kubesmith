@@ -2,6 +2,7 @@ package generic
 
 import (
 	"github.com/golang/glog"
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -20,7 +21,7 @@ func (c *GenericController) processNextWorkItem() bool {
 	// it back with rate-limiting below
 	defer c.Queue.Done(key)
 
-	err := c.SyncHandler(key.(string))
+	err := c.SyncHandler(key.(sync.SyncAction))
 	if err == nil {
 		// If you had no error, tell the queue to stop tracking history for your key. This will reset
 		// things like failure counts for per-item rate limiting.

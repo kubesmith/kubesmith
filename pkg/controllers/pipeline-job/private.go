@@ -5,27 +5,27 @@ import (
 	"strings"
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
 )
 
-func (c *PipelineJobController) processPipelineJob(key string) error {
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return errors.Wrap(err, "error splitting queue key")
+func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
+	pipelineJob := action.GetObject().(*batchv1.Job)
+	if pipelineJob == nil {
+		panic(errors.New("programmer error; pipeline job object was nil"))
 	}
 
 	tmpLogger := c.logger.WithFields(logrus.Fields{
-		"JobName":      name,
-		"JobNamespace": ns,
+		"JobName":      pipelineJob.GetName(),
+		"JobNamespace": pipelineJob.GetNamespace(),
 	})
 
 	tmpLogger.Info("retrieving pipeline job...")
-	pipelineJob, err := c.jobLister.Jobs(ns).Get(name)
+	pipelineJob, err := c.jobLister.Jobs(pipelineJob.GetNamespace()).Get(pipelineJob.GetName())
 	if apierrors.IsNotFound(err) {
 		tmpLogger.Error("pipeline job does not exist")
 		return nil
