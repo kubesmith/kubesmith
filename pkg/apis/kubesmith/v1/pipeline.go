@@ -7,9 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/selection"
+
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -348,6 +351,21 @@ func (p *Pipeline) GetResourceLabels() map[string]string {
 		"PipelineNamespace": p.GetNamespace(),
 		"PipelineID":        p.GetHashID(),
 	}
+}
+
+func (p *Pipeline) GetResourceLabelSelector() (labels.Selector, error) {
+	selector := labels.NewSelector()
+
+	for key, value := range p.GetResourceLabels() {
+		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create label requirement")
+		}
+
+		selector.Add(*req)
+	}
+
+	return selector, nil
 }
 
 func (p *Pipeline) IsRunning() bool {

@@ -184,7 +184,97 @@ func (c *PipelineController) processFailedPipeline(pipeline api.Pipeline, logger
 }
 
 func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing deleted pipeline")
+	if err := c.cleanupMinioServerForPipeline(pipeline, logger); err != nil {
+		return err
+	}
+
+	// create a selector for listing resources associated to pipeline jobs
+	logger.Info("creating label selector for resources associated with the pipeline...")
+	labelSelector, err := pipeline.GetResourceLabelSelector()
+	if err != nil {
+		err = errors.Wrap(err, "could not create label selector for pipeline")
+		logger.Error(err)
+		return err
+	}
+	logger.Info("created label selector!")
+
+	// create the delete options that can help clean everything up
+	propagationPolicy := metav1.DeletePropagationBackground
+	deleteOptions := metav1.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	}
+
+	// attempt to get all Jobs associated to the pipeline
+	logger.Info("retrieving jobs associated to pipeline...")
+	jobs, err := c.jobLister.Jobs(pipeline.GetNamespace()).List(labelSelector)
+	if err != nil {
+		err = errors.Wrap(err, "could not retrieve jobs associated to pipeline")
+		logger.Error(err)
+		return err
+	}
+	logger.Info("retrieved jobs associated to pipeline!")
+
+	// delete all of the jobs associated to the pipeline
+	logger.Info("deleting jobs associated to pipeline...")
+	for _, job := range jobs {
+		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
+			err = errors.Wrap(err, "could not delete job associated to pipeline")
+			logger.WithFields(logrus.Fields{
+				"JobName":      job.GetName(),
+				"JobNamespace": job.GetNamespace(),
+			}).Error(err)
+			return err
+		}
+	}
+	logger.Info("deleted jobs associated to pipeline!")
+
+	// attempt to get all ConfigMaps associated to the pipeline
+	logger.Info("retrieving configmaps associated to pipeline...")
+	configMaps, err := c.configMapLister.ConfigMaps(pipeline.GetNamespace()).List(labelSelector)
+	if err != nil {
+		err = errors.Wrap(err, "could not retrieve configmaps associated to pipeline")
+		logger.Error(err)
+		return err
+	}
+	logger.Info("retrieved configmaps associated to pipeline!")
+
+	// delete all of the configmaps associated to the pipeline
+	logger.Info("deleting configmaps associated to pipeline...")
+	for _, configMap := range configMaps {
+		if err := c.kubeClient.CoreV1().ConfigMaps(configMap.GetNamespace()).Delete(configMap.GetName(), &deleteOptions); err != nil {
+			err = errors.Wrap(err, "could not delete configmap associated to pipeline")
+			logger.WithFields(logrus.Fields{
+				"ConfigMapName":      configMap.GetName(),
+				"ConfigMapNamespace": configMap.GetNamespace(),
+			}).Error(err)
+			return err
+		}
+	}
+
+	logger.Info("deleted configmaps associated to pipeline!")
+	logger.Info("pipeline successfully cleaned up!")
+
+	return nil
+}
+
+func (c *PipelineController) cleanupMinioServerForPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("cleaning up minio server resources...")
+	minioServer := minio.NewMinioServer(
+		pipeline.GetNamespace(),
+		pipeline.GetResourcePrefix(),
+		pipeline.GetResourceLabels(),
+		logger,
+		c.kubeClient,
+		c.deploymentLister,
+	)
+
+	if err := minioServer.Delete(); err != nil {
+		logger.Error(errors.Wrap(err, "could not cleanup minio server resources"))
+		return err
+	}
+
+	logger.Info("cleaned up minio server resources")
+
 	return nil
 }
 
