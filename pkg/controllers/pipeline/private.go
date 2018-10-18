@@ -431,6 +431,7 @@ func (c *PipelineController) ensureJobIsScheduled(
 				name,
 				job.Image,
 				jobAnnotations,
+				job.Environment,
 				c.getPipelineJobCommand(job),
 				c.getPipelineJobArgs(job),
 				pipeline.GetResourceLabels(),

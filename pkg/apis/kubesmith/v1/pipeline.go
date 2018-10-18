@@ -160,11 +160,6 @@ func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineSpecJob {
 	envVars := []string{}
 	artifacts := []PipelineSpecJobArtifact{}
 
-	// if this job doesn't extend anything, we're done
-	if len(job.Extends) == 0 {
-		return job
-	}
-
 	// loop through the pipeline's global environment variables and add them first
 	for _, env := range p.GetEnvironment() {
 		envVars = append(envVars, env)

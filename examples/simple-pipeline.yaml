@@ -9,7 +9,7 @@ spec:
     repoURL: git@github.com:carldanley/dualshock4.git
 
   environment:
-  - MY_TEST_VAR=foobar
+  - SAMPLE_GLOBAL_VAR=foobar
 
   templates:
   - name: default
@@ -37,6 +37,9 @@ spec:
         go get -u golang.org/x/lint/golint
         golint ./
 
+        # testing global variables
+        echo "\"${SAMPLE_GLOBAL_VAR}\" should equal \"foobar\""
+
         # the following script will purposefully fail this job but note the
         # allowFailure is set to true so, even though the job failed, the pipeline
         # will continue on as if it didn't
@@ -49,14 +52,15 @@ spec:
     command: ["/bin/sh", "-c"]
     environment:
     - FOO=hello, world
+    - SAMPLE_GLOBAL_VAR=really cool!
     args:
     - /bin/sh -x /kubesmith/scripts/first-script.sh;
       /bin/sh -x /kubesmith/scripts/second-script.sh;
       /bin/sh -x /kubesmith/scripts/third-script.sh;
     configMapData:
       first-script.sh: |
-        echo "${FOO} from first script\n"
+        echo "${FOO} from first script"
       second-script.sh: |
-        echo "${FOO} from second script\n"
+        echo "${FOO} from second script"
       third-script.sh: |
-        echo "${FOO} from third script\n"
+        echo "${FOO} from third script - this is ${SAMPLE_GLOBAL_VAR} :)"

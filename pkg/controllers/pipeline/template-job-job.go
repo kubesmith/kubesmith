@@ -1,15 +1,37 @@
 package pipeline
 
 import (
+	"strings"
+
 	"github.com/kubesmith/kubesmith/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func convertEnvironentVariablesToEnvVar(variables []string) []corev1.EnvVar {
+	env := []corev1.EnvVar{}
+
+	for _, pair := range variables {
+		parts := strings.Split(pair, "=")
+
+		if len(parts) != 2 {
+			continue
+		}
+
+		env = append(env, corev1.EnvVar{
+			Name:  parts[0],
+			Value: parts[1],
+		})
+	}
+
+	return env
+}
+
 func GetJob(
 	name, image string,
 	annotations map[string]string,
+	environment []string,
 	command, args []string,
 	labels map[string]string,
 ) batchv1.Job {
@@ -45,6 +67,7 @@ func GetJob(
 									MountPath: "/kubesmith/artifacts",
 								},
 							},
+							Env: convertEnvironentVariablesToEnvVar(environment),
 						},
 					},
 					Volumes: []corev1.Volume{
