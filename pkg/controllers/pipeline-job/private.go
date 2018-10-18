@@ -17,7 +17,7 @@ import (
 func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
 	pipelineJob := action.GetObject().(*batchv1.Job)
 	if pipelineJob == nil {
-		panic(errors.New("programmer error; pipeline job object was nil"))
+		c.logger.Panic(errors.New("programmer error; pipeline job object was nil"))
 	}
 
 	tmpLogger := c.logger.WithFields(logrus.Fields{

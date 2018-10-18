@@ -22,7 +22,7 @@ import (
 func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 	pipeline := action.GetObject().(*api.Pipeline)
 	if pipeline == nil {
-		panic(errors.New("programmer error; pipeline object was nil"))
+		c.logger.Panic(errors.New("programmer error; pipeline object was nil"))
 	}
 
 	switch action.GetAction() {
