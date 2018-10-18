@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/kubesmith/kubesmith/pkg/annotations"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline/minio"
 	"github.com/kubesmith/kubesmith/pkg/sync"
@@ -420,9 +421,16 @@ func (c *PipelineController) ensureJobIsScheduled(
 	logger.Info("checking to see if job exists...")
 	if _, err := c.jobLister.Jobs(pipeline.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
+			jobAnnotations := map[string]string{}
+
+			if job.AllowFailure == true {
+				jobAnnotations[annotations.AllowFailure] = "true"
+			}
+
 			resource := GetJob(
 				name,
 				job.Image,
+				jobAnnotations,
 				c.getPipelineJobCommand(job),
 				c.getPipelineJobArgs(job),
 				pipeline.GetResourceLabels(),

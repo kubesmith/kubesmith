@@ -36,20 +36,27 @@ spec:
       my-script.sh: |
         go get -u golang.org/x/lint/golint
         golint ./
+
+        # the following script will purposefully fail this job but note the
+        # allowFailure is set to true so, even though the job failed, the pipeline
+        # will continue on as if it didn't
+        purposefully_fail_on_this
     allowFailure: true
 
   - name: demonstrate multiple script calls from one configuration
     stage: third
     image: busybox
     command: ["/bin/sh", "-c"]
+    environment:
+    - FOO=hello, world
     args:
     - /bin/sh -x /kubesmith/scripts/first-script.sh;
       /bin/sh -x /kubesmith/scripts/second-script.sh;
       /bin/sh -x /kubesmith/scripts/third-script.sh;
     configMapData:
       first-script.sh: |
-        echo "hello from first script\n"
+        echo "${FOO} from first script\n"
       second-script.sh: |
-        echo "hello from second script\n"
+        echo "${FOO} from second script\n"
       third-script.sh: |
-        echo "hello from third script\n"
+        echo "${FOO} from third script\n"

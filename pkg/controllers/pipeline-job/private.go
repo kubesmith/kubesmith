@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/kubesmith/kubesmith/pkg/annotations"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
@@ -68,13 +69,35 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 	return nil
 }
 
-func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Warn("todo: finish failed pipeline job")
-	logger.Warn("todo: handle allowFailure for pipeline job")
+func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("checking to see if job is allowed to fail...")
+	if !c.jobIsAllowedToFail(job) {
+		logger.Info("job is not allowed to fail; marking pipeline as failed...")
+		pipeline := *originalPipeline.DeepCopy()
+		pipeline.SetPipelineToFailed(fmt.Sprintf("job (%s) failed", job.GetName()))
+
+		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
+			err = errors.Wrap(err, "could not mark pipeline as failed")
+			logger.Error(err)
+			return err
+		}
+
+		logger.Info("marked pipeline as failed")
+		return nil
+	}
+
+	logger.Info("job was allowed to fail!")
+
+	if err := c.processSucceededPipelineJob(job, originalPipeline, logger); err != nil {
+		logger.Error(err)
+		return err
+	}
+
 	return nil
 }
 
 func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("checking to see if jobs for the current stage of the pipeline are finished...")
 	jobsAreFinished, err := c.pipelineJobsAreFinishedForCurrentStage(originalPipeline, logger)
 	if err != nil {
 		logger.Error(err)
@@ -86,15 +109,28 @@ func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, or
 		return nil
 	}
 
+	logger.Info("jobs for current stage are finished!")
+	logger.Info("advancing pipeline to next stage...")
 	pipeline := *originalPipeline.DeepCopy()
 	pipeline.AdvanceCurrentStage()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-		err = errors.Wrap(err, "could not update advanced pipeline")
+		err = errors.Wrap(err, "could not advance pipeline to next stage")
 		logger.Error(err)
 		return err
 	}
 
+	logger.Info("pipeline advanced to next stage (or marked as finished)")
 	return nil
+}
+
+func (c *PipelineJobController) jobIsAllowedToFail(job *batchv1.Job) bool {
+	for key, value := range job.GetAnnotations() {
+		if key == annotations.AllowFailure && value == "true" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *PipelineJobController) pipelineJobsAreFinishedForCurrentStage(pipeline api.Pipeline, logger logrus.FieldLogger) (bool, error) {

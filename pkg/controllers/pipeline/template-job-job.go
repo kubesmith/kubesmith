@@ -9,16 +9,18 @@ import (
 
 func GetJob(
 	name, image string,
+	annotations map[string]string,
 	command, args []string,
 	labels map[string]string,
 ) batchv1.Job {
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   name,
-			Labels: labels,
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit: utils.Int32Ptr(1),
+			BackoffLimit: utils.Int32Ptr(0),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					RestartPolicy: "Never",
