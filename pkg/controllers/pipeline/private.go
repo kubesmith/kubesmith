@@ -152,6 +152,10 @@ func (c *PipelineController) processRunningPipeline(pipeline api.Pipeline, logge
 		return err
 	}
 
+	if err := c.ensureRepoArtifactExists(pipeline, minioServer, logger); err != nil {
+		return err
+	}
+
 	logger.Info("ensuring jobs are scheduled")
 	for index, job := range pipeline.GetExpandedJobsForCurrentStage() {
 		jobIndex := index + 1
@@ -339,6 +343,24 @@ func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, l
 
 	logger.Info("minio server is available!")
 	return minioServer, nil
+}
+
+func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+	logger.Warn("todo")
+
+	/*
+		LOGIC FOR THIS FUNC:
+		====================
+
+		- Check if the repository artifact (repo.tar.gz) exists
+				- If it does not exist:
+							- Ensure a job that will create the repository artifact is scheduled
+							- Wait for the repository artifact to exist (be sure to set a timeout)
+				- If it does exist:
+							- Do nothing
+	*/
+
+	return nil
 }
 
 func (c *PipelineController) getPipelineJobConfigMapData(job api.PipelineSpecJob) map[string]string {
