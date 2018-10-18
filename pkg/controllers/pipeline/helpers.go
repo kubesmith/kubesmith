@@ -40,7 +40,6 @@ func NewPipelineController(
 	}
 
 	c.SyncHandler = c.processPipeline
-	c.ResyncFunc = c.resyncPipelines
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineInformer.Informer().HasSynced,

@@ -7,6 +7,10 @@ spec:
   workspace:
     path: /go/src/github.com/carldanley/dualshock
     repoURL: git@github.com:carldanley/dualshock4.git
+    ssh:
+      secret:
+        name: kubesmith-forge-secrets
+        key: 2db1faf68f6fc212f0d7c4a728aa30d2
 
   environment:
   - SAMPLE_GLOBAL_VAR=foobar
