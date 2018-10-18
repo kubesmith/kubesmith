@@ -16,7 +16,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
 )
 
 func (c *PipelineController) processPipeline(action sync.SyncAction) error {
@@ -79,22 +78,15 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 	return nil
 }
 
-func (c *PipelineController) resync() {
-	list, err := c.kubesmithClient.Pipelines(c.namespace).List(metav1.ListOptions{})
+func (c *PipelineController) resyncPipelines() {
+	pipelines, err := c.pipelineLister.List(labels.Everything())
 	if err != nil {
-		glog.V(1).Info("error listing pipelines")
-		glog.Error(err)
+		glog.Error(errors.Wrap(err, "error listing pipelines"))
 		return
 	}
 
-	for _, forge := range list.Items {
-		key, err := cache.MetaNamespaceKeyFunc(forge)
-		if err != nil {
-			glog.Errorf("error generating key for pipeline; key: %s", forge.Name)
-			continue
-		}
-
-		c.Queue.Add(key)
+	for _, pipeline := range pipelines {
+		c.Queue.Add(sync.PipelineUpdateAction(pipeline))
 	}
 }
 

@@ -40,6 +40,7 @@ func NewPipelineController(
 	}
 
 	c.SyncHandler = c.processPipeline
+	c.ResyncFunc = c.resyncPipelines
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineInformer.Informer().HasSynced,
@@ -74,10 +75,8 @@ func NewPipelineController(
 					return
 				}
 
-				// if the phase is "running" and the stageIndex changed, react
-				isRunningPhase := (updatedPipeline.Status.Phase == api.PipelinePhaseRunning)
-				stageIndexChanged := (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex)
-				if isRunningPhase && stageIndexChanged {
+				// if the phase is running and the stageIndex changed, react
+				if updatedPipeline.IsRunning() && (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex) {
 					tmpLogger.Info("queueing pipeline: stage index advanced")
 					c.Queue.Add(sync.PipelineUpdateAction(updatedPipeline))
 				}

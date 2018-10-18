@@ -30,6 +30,7 @@ func NewPipelineJobController(
 	}
 
 	c.SyncHandler = c.processPipelineJob
+	c.ResyncFunc = c.resyncJobs
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		jobsInformer.Informer().HasSynced,

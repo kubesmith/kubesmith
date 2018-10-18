@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/annotations"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
@@ -67,6 +68,21 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 	}
 
 	return nil
+}
+
+func (c *PipelineJobController) resyncJobs() {
+	glog.V(1).Info("resyncing jobs...")
+	jobs, err := c.jobLister.List(labels.Everything())
+	if err != nil {
+		glog.Error(errors.Wrap(err, "error listing jobs"))
+		return
+	}
+
+	for _, job := range jobs {
+		c.Queue.Add(sync.JobUpdateAction(job))
+	}
+
+	glog.V(1).Info("resynced jobs!")
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
