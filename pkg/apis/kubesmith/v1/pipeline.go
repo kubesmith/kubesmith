@@ -278,24 +278,24 @@ func (p *Pipeline) GetCurrentPhase() PipelinePhase {
 	return p.Status.Phase
 }
 
-func (p *Pipeline) SetPipelineToQueued() {
+func (p *Pipeline) SetPhaseToQueued() {
 	p.Status.StageIndex = 0
 	p.Status.Phase = PipelinePhaseQueued
 }
 
-func (p *Pipeline) SetPipelineToCompleted() {
+func (p *Pipeline) SetPhaseToCompleted() {
 	p.Status.StageIndex = len(p.GetStages())
 	p.Status.Phase = PipelinePhaseCompleted
 	p.Status.EndTime.Time = time.Now()
 }
 
-func (p *Pipeline) SetPipelineToRunning() {
+func (p *Pipeline) SetPhaseToRunning() {
 	p.Status.StageIndex = 1
 	p.Status.Phase = PipelinePhaseRunning
 	p.Status.StartTime.Time = time.Now()
 }
 
-func (p *Pipeline) SetPipelineToFailed(reason string) {
+func (p *Pipeline) SetPhaseToFailed(reason string) {
 	p.Status.StageIndex = len(p.GetStages())
 	p.Status.Phase = PipelinePhaseFailed
 	p.Status.EndTime.Time = time.Now()
@@ -568,7 +568,7 @@ func (p *Pipeline) AdvanceCurrentStage() {
 	stageIndex := p.GetStageIndex() + 1
 
 	if stageIndex > len(p.GetStages()) {
-		p.SetPipelineToCompleted()
+		p.SetPhaseToCompleted()
 		return
 	}
 

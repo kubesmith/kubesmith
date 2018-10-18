@@ -74,7 +74,7 @@ func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, origi
 	if !c.jobIsAllowedToFail(job) {
 		logger.Info("job is not allowed to fail; marking pipeline as failed...")
 		pipeline := *originalPipeline.DeepCopy()
-		pipeline.SetPipelineToFailed(fmt.Sprintf("job (%s) failed", job.GetName()))
+		pipeline.SetPhaseToFailed(fmt.Sprintf("job (%s) failed", job.GetName()))
 
 		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
 			err = errors.Wrap(err, "could not mark pipeline as failed")

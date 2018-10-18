@@ -106,7 +106,7 @@ func (c *PipelineController) processEmptyPhasePipeline(originalPipeline api.Pipe
 		logger.Error(errors.Wrap(err, "could not validate pipeline"))
 		logger.Info("marking pipeline as failed")
 
-		pipeline.SetPipelineToFailed(err.Error())
+		pipeline.SetPhaseToFailed(err.Error())
 		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
 			logger.Error(errors.Wrap(err, "could not mark pipeline as failed"))
 		}
@@ -118,7 +118,7 @@ func (c *PipelineController) processEmptyPhasePipeline(originalPipeline api.Pipe
 	logger.Info("finished validating pipeline")
 	logger.Info("marking pipeline as queued...")
 
-	pipeline.SetPipelineToQueued()
+	pipeline.SetPhaseToQueued()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
 		logger.Error(errors.Wrap(err, "could not set pipeline to running"))
 		return err
@@ -144,7 +144,7 @@ func (c *PipelineController) processQueuedPipeline(originalPipeline api.Pipeline
 	}
 
 	logger.Info("marking pipeline as running...")
-	pipeline.SetPipelineToRunning()
+	pipeline.SetPhaseToRunning()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
 		logger.Error(errors.Wrap(err, "could not set pipeline to running"))
 		return err
