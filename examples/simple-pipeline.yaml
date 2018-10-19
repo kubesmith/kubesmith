@@ -61,13 +61,13 @@ spec:
     stage: third
     image: busybox
     command: ["/bin/sh", "-c"]
-    environment:
-    - FOO=hello, world
-    - SAMPLE_GLOBAL_VAR=really cool!
     args:
     - /bin/sh -x /kubesmith/scripts/first-script.sh;
       /bin/sh -x /kubesmith/scripts/second-script.sh;
       /bin/sh -x /kubesmith/scripts/third-script.sh;
+    environment:
+    - FOO=hello, world
+    - SAMPLE_GLOBAL_VAR=really cool!
     configMapData:
       first-script.sh: |
         echo "${FOO} from first script"
