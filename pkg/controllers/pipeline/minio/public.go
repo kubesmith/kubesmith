@@ -119,14 +119,24 @@ func (m *MinioServer) DeleteService() error {
 
 func (m *MinioServer) Delete() error {
 	if err := m.DeleteService(); err != nil {
-		return err
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	if err := m.DeleteDeployment(); err != nil {
-		return err
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
 
-	return m.DeleteSecret()
+	if err := m.DeleteSecret(); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (m *MinioServer) WaitForAvailability(
