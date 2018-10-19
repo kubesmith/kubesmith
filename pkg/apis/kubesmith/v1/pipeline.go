@@ -89,30 +89,12 @@ const (
 type PipelinePhase string
 
 type PipelineStatus struct {
-	StageIndex    int                   `json:"stageIndex"`
-	Phase         PipelinePhase         `json:"phase"`
-	StartTime     metav1.Time           `json:"startTime"`
-	EndTime       metav1.Time           `json:"endTime"`
-	FailureReason string                `json:"failureReason"`
-	Stages        []PipelineStatusStage `json:"stages"`
-	LastUpdated   metav1.Time           `json:"lastUpdate"`
-}
-
-type PipelineStatusStage struct {
-	Index int                      `json:"index"`
-	Jobs  []PipelineStatusStageJob `json:"jobs"`
-}
-
-type PipelineStatusStageJobResource struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace"`
-}
-
-type PipelineStatusStageJob struct {
-	Index     int                              `json:"index"`
-	Resource  []PipelineStatusStageJobResource `json:"resource"`
-	StartTime metav1.Time                      `json:"startTime"`
-	EndTime   metav1.Time                      `json:"endTime"`
+	StageIndex    int           `json:"stageIndex"`
+	Phase         PipelinePhase `json:"phase"`
+	StartTime     metav1.Time   `json:"startTime"`
+	EndTime       metav1.Time   `json:"endTime"`
+	FailureReason string        `json:"failureReason"`
+	LastUpdated   metav1.Time   `json:"lastUpdate"`
 }
 
 // +genclient
