@@ -93,9 +93,7 @@ func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, origi
 		pipeline.SetPhaseToFailed(fmt.Sprintf("job (%s) failed", job.GetName()))
 
 		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-			err = errors.Wrap(err, "could not mark pipeline as failed")
-			logger.Error(err)
-			return err
+			return errors.Wrap(err, "could not mark pipeline as failed")
 		}
 
 		logger.Info("marked pipeline as failed")
@@ -105,7 +103,6 @@ func (c *PipelineJobController) processFailedPipelineJob(job *batchv1.Job, origi
 	logger.Info("job was allowed to fail!")
 
 	if err := c.processSucceededPipelineJob(job, originalPipeline, logger); err != nil {
-		logger.Error(err)
 		return err
 	}
 
@@ -116,7 +113,6 @@ func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, or
 	logger.Info("checking to see if jobs for the current stage of the pipeline are finished...")
 	jobsAreFinished, err := c.pipelineJobsAreFinishedForCurrentStage(originalPipeline, logger)
 	if err != nil {
-		logger.Error(err)
 		return err
 	}
 
@@ -130,9 +126,7 @@ func (c *PipelineJobController) processSucceededPipelineJob(job *batchv1.Job, or
 	pipeline := *originalPipeline.DeepCopy()
 	pipeline.AdvanceCurrentStage()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-		err = errors.Wrap(err, "could not advance pipeline to next stage")
-		logger.Error(err)
-		return err
+		return errors.Wrap(err, "could not advance pipeline to next stage")
 	}
 
 	logger.Info("pipeline advanced to next stage (or marked as finished)")
@@ -153,8 +147,7 @@ func (c *PipelineJobController) pipelineJobsAreFinishedForCurrentStage(pipeline 
 	logger.Info("getting scheduled jobs...")
 	scheduledJobs, err := c.getPipelineJobsForCurrentStage(pipeline)
 	if err != nil {
-		logger.Error(errors.Wrap(err, "could not get scheduled jobs for pipeline"))
-		return false, err
+		return false, errors.Wrap(err, "could not get scheduled jobs for pipeline")
 	}
 	logger.Info("got scheduled jobs for current pipeline stage...")
 

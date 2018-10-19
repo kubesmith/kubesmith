@@ -81,7 +81,7 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 func (c *PipelineController) resyncPipelines() {
 	pipelines, err := c.pipelineLister.List(labels.Everything())
 	if err != nil {
-		glog.Error(errors.Wrap(err, "error listing pipelines"))
+		c.logger.Error(errors.Wrap(err, "error listing pipelines"))
 		return
 	}
 
@@ -100,7 +100,7 @@ func (c *PipelineController) processEmptyPhasePipeline(originalPipeline api.Pipe
 
 		pipeline.SetPhaseToFailed(err.Error())
 		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-			logger.Error(errors.Wrap(err, "could not mark as failed"))
+			return errors.Wrap(err, "could not mark as failed")
 		}
 
 		logger.Info("marked as failed!")
@@ -123,8 +123,7 @@ func (c *PipelineController) processQueuedPipeline(originalPipeline api.Pipeline
 	logger.Info("checking if another pipeline can be run")
 	canRunAnotherPipeline, err := c.canRunAnotherPipeline(pipeline)
 	if err != nil {
-		logger.Error(errors.Wrap(err, "could not check if another pipeline could be run"))
-		return err
+		return errors.Wrap(err, "could not check if another pipeline could be run")
 	}
 
 	if !canRunAnotherPipeline {
@@ -135,8 +134,7 @@ func (c *PipelineController) processQueuedPipeline(originalPipeline api.Pipeline
 	logger.Info("marking as running")
 	pipeline.SetPhaseToRunning()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-		logger.Error(errors.Wrap(err, "could not mark as running"))
-		return err
+		return errors.Wrap(err, "could not mark as running")
 	}
 
 	logger.Info("marked as running")
@@ -202,9 +200,7 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	logger.Info("retrieving jobs")
 	jobs, err := c.jobLister.Jobs(pipeline.GetNamespace()).List(labelSelector)
 	if err != nil {
-		err = errors.Wrap(err, "could not retrieve jobs")
-		logger.Error(err)
-		return err
+		return errors.Wrap(err, "could not retrieve jobs")
 	}
 	logger.Info("retrieved jobs")
 
@@ -212,12 +208,7 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	logger.Info("deleting jobs")
 	for _, job := range jobs {
 		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
-			err = errors.Wrap(err, "could not delete job")
-			logger.WithFields(logrus.Fields{
-				"JobName":      job.GetName(),
-				"JobNamespace": job.GetNamespace(),
-			}).Error(err)
-			return err
+			return errors.Wrapf(err, "could not delete job: %s/%s", job.GetName(), job.GetNamespace())
 		}
 	}
 	logger.Info("deleted jobs")
@@ -226,9 +217,7 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	logger.Info("retrieving configmaps")
 	configMaps, err := c.configMapLister.ConfigMaps(pipeline.GetNamespace()).List(labelSelector)
 	if err != nil {
-		err = errors.Wrap(err, "could not retrieve configmaps")
-		logger.Error(err)
-		return err
+		return errors.Wrap(err, "could not retrieve configmaps")
 	}
 	logger.Info("retrieved configmaps")
 
@@ -236,12 +225,7 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	logger.Info("deleting configmaps")
 	for _, configMap := range configMaps {
 		if err := c.kubeClient.CoreV1().ConfigMaps(configMap.GetNamespace()).Delete(configMap.GetName(), &deleteOptions); err != nil {
-			err = errors.Wrap(err, "could not delete configmap")
-			logger.WithFields(logrus.Fields{
-				"ConfigMapName":      configMap.GetName(),
-				"ConfigMapNamespace": configMap.GetNamespace(),
-			}).Error(err)
-			return err
+			return errors.Wrapf(err, "could not delete configmap: %s/%s", configMap.GetName(), configMap.GetNamespace())
 		}
 	}
 
@@ -347,8 +331,7 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 	logger.Info("checking for repo artifact")
 	exists, err := s3Client.FileExists("workspace", "repo.tar.gz")
 	if err != nil {
-		logger.Error(errors.Wrap(err, "could not check for repo artifact"))
-		return err
+		return errors.Wrap(err, "could not check for repo artifact")
 	} else if exists {
 		logger.Info("repo artifact exists")
 		return nil
@@ -356,7 +339,6 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 
 	logger.Info("repo artifact does not exist")
 	if err := c.ensureRepoArtifactJobIsScheduled(pipeline, minioServer, logger); err != nil {
-		logger.Error(err)
 		return err
 	}
 
@@ -371,8 +353,7 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 		logger.Info("repo artifact was not created; requeueing pipeline")
 		new := *pipeline.DeepCopy()
 		if _, err := c.patchPipeline(new, pipeline); err != nil {
-			logger.Error(errors.Wrap(err, "could not requeue pipeline"))
-			return err
+			return errors.Wrap(err, "could not requeue pipeline")
 		}
 
 		logger.Info("pipeline requeued")
