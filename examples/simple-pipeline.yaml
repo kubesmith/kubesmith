@@ -5,7 +5,7 @@ metadata:
   namespace: kubesmith
 spec:
   workspace:
-    path: /go/src/github.com/carldanley/dualshock
+    path: /go/src/github.com/carldanley/dualshock4
     repoURL: git@github.com:carldanley/dualshock4.git
     ssh:
       secret:
@@ -29,7 +29,14 @@ spec:
     stage: first
     image: ubuntu
     runner:
+    - pwd
     - ls -la
+    - echo "first stage is the best!" > my-artifact.txt
+    artifacts:
+    - name: my-artifact
+      when: on-success
+      paths:
+      - my-artifact.txt
 
   - name: do something that requires more time
     stage: second
