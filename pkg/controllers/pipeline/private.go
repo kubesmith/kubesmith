@@ -29,8 +29,7 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
 		logger := c.logger.WithFields(logrus.Fields{
-			"Name":      pipeline.Name,
-			"Namespace": pipeline.Namespace,
+			"Name": pipeline.Name,
 		})
 
 		if err := c.processDeletedPipeline(*pipeline, logger); err != nil {
@@ -48,7 +47,6 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 		// create a new logger for this pipeline's execution
 		fieldLogger := c.logger.WithFields(logrus.Fields{
 			"Name":       pipeline.Name,
-			"Namespace":  pipeline.Namespace,
 			"Phase":      pipeline.Status.Phase,
 			"StageIndex": pipeline.Status.StageIndex,
 		})
@@ -95,56 +93,53 @@ func (c *PipelineController) resyncPipelines() {
 func (c *PipelineController) processEmptyPhasePipeline(originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
 	pipeline := *originalPipeline.DeepCopy()
 
-	logger.Info("validating pipeline...")
+	logger.Info("validating")
 	if err := pipeline.Validate(); err != nil {
-		logger.Error(errors.Wrap(err, "could not validate pipeline"))
-		logger.Info("marking pipeline as failed")
+		err = errors.Wrap(err, "could not validate")
+		logger.Info("marking as failed")
 
 		pipeline.SetPhaseToFailed(err.Error())
 		if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-			logger.Error(errors.Wrap(err, "could not mark pipeline as failed"))
+			logger.Error(errors.Wrap(err, "could not mark as failed"))
 		}
 
-		logger.Info("marked pipeline as failed!")
+		logger.Info("marked as failed!")
 		return err
 	}
 
-	logger.Info("finished validating pipeline")
-	logger.Info("marking pipeline as queued...")
-
+	logger.Info("validated; marking as queued")
 	pipeline.SetPhaseToQueued()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-		logger.Error(errors.Wrap(err, "could not set pipeline to running"))
-		return err
+		return errors.Wrap(err, "could not mark as queued")
 	}
 
-	logger.Info("marked pipeline as queued")
+	logger.Info("marked as queued")
 	return nil
 }
 
 func (c *PipelineController) processQueuedPipeline(originalPipeline api.Pipeline, logger logrus.FieldLogger) error {
 	pipeline := *originalPipeline.DeepCopy()
 
-	logger.Info("checking to see if we can run another pipeline in this namespace")
+	logger.Info("checking if another pipeline can be run")
 	canRunAnotherPipeline, err := c.canRunAnotherPipeline(pipeline)
 	if err != nil {
-		logger.Error(errors.Wrap(err, "could not check to see if we could run another pipeline"))
+		logger.Error(errors.Wrap(err, "could not check if another pipeline could be run"))
 		return err
 	}
 
 	if !canRunAnotherPipeline {
-		logger.Warn("cannot run another pipeline in this namespace")
+		logger.Warn("cannot run another pipeline")
 		return nil
 	}
 
-	logger.Info("marking pipeline as running...")
+	logger.Info("marking as running")
 	pipeline.SetPhaseToRunning()
 	if _, err := c.patchPipeline(pipeline, originalPipeline); err != nil {
-		logger.Error(errors.Wrap(err, "could not set pipeline to running"))
+		logger.Error(errors.Wrap(err, "could not mark as running"))
 		return err
 	}
 
-	logger.Info("marked pipeline as running")
+	logger.Info("marked as running")
 	return nil
 }
 
@@ -173,12 +168,12 @@ func (c *PipelineController) processRunningPipeline(pipeline api.Pipeline, logge
 }
 
 func (c *PipelineController) processCompletedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing completed pipeline")
+	logger.Warn("todo: processing completed pipeline")
 	return nil
 }
 
 func (c *PipelineController) processFailedPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing failed pipeline")
+	logger.Warn("todo: processing failed pipeline")
 	return nil
 }
 
@@ -188,14 +183,12 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	}
 
 	// create a selector for listing resources associated to pipeline jobs
-	logger.Info("creating label selector for resources associated with the pipeline...")
+	logger.Info("creating label selector for associated resources")
 	labelSelector, err := pipeline.GetResourceLabelSelector()
 	if err != nil {
-		err = errors.Wrap(err, "could not create label selector for pipeline")
-		logger.Error(err)
-		return err
+		return errors.Wrap(err, "could not create label selector for pipeline")
 	}
-	logger.Info("created label selector!")
+	logger.Info("created label selector for associated resources")
 
 	// create the delete options that can help clean everything up
 	propagationPolicy := metav1.DeletePropagationBackground
@@ -204,20 +197,20 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 	}
 
 	// attempt to get all Jobs associated to the pipeline
-	logger.Info("retrieving jobs associated to pipeline...")
+	logger.Info("retrieving jobs")
 	jobs, err := c.jobLister.Jobs(pipeline.GetNamespace()).List(labelSelector)
 	if err != nil {
-		err = errors.Wrap(err, "could not retrieve jobs associated to pipeline")
+		err = errors.Wrap(err, "could not retrieve jobs")
 		logger.Error(err)
 		return err
 	}
-	logger.Info("retrieved jobs associated to pipeline!")
+	logger.Info("retrieved jobs")
 
 	// delete all of the jobs associated to the pipeline
-	logger.Info("deleting jobs associated to pipeline...")
+	logger.Info("deleting jobs")
 	for _, job := range jobs {
 		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
-			err = errors.Wrap(err, "could not delete job associated to pipeline")
+			err = errors.Wrap(err, "could not delete job")
 			logger.WithFields(logrus.Fields{
 				"JobName":      job.GetName(),
 				"JobNamespace": job.GetNamespace(),
@@ -225,23 +218,23 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 			return err
 		}
 	}
-	logger.Info("deleted jobs associated to pipeline!")
+	logger.Info("deleted jobs")
 
 	// attempt to get all ConfigMaps associated to the pipeline
-	logger.Info("retrieving configmaps associated to pipeline...")
+	logger.Info("retrieving configmaps")
 	configMaps, err := c.configMapLister.ConfigMaps(pipeline.GetNamespace()).List(labelSelector)
 	if err != nil {
-		err = errors.Wrap(err, "could not retrieve configmaps associated to pipeline")
+		err = errors.Wrap(err, "could not retrieve configmaps")
 		logger.Error(err)
 		return err
 	}
-	logger.Info("retrieved configmaps associated to pipeline!")
+	logger.Info("retrieved configmaps")
 
 	// delete all of the configmaps associated to the pipeline
-	logger.Info("deleting configmaps associated to pipeline...")
+	logger.Info("deleting configmaps")
 	for _, configMap := range configMaps {
 		if err := c.kubeClient.CoreV1().ConfigMaps(configMap.GetNamespace()).Delete(configMap.GetName(), &deleteOptions); err != nil {
-			err = errors.Wrap(err, "could not delete configmap associated to pipeline")
+			err = errors.Wrap(err, "could not delete configmap")
 			logger.WithFields(logrus.Fields{
 				"ConfigMapName":      configMap.GetName(),
 				"ConfigMapNamespace": configMap.GetNamespace(),
@@ -250,14 +243,13 @@ func (c *PipelineController) processDeletedPipeline(pipeline api.Pipeline, logge
 		}
 	}
 
-	logger.Info("deleted configmaps associated to pipeline!")
-	logger.Info("pipeline successfully cleaned up!")
-
+	logger.Info("deleted configmaps")
+	logger.Info("pipeline cleaned up")
 	return nil
 }
 
 func (c *PipelineController) cleanupMinioServerForPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
-	logger.Info("cleaning up minio server resources...")
+	logger.Info("cleaning up minio server resources")
 	minioServer := minio.NewMinioServer(
 		pipeline.GetNamespace(),
 		pipeline.GetResourcePrefix(),
@@ -329,7 +321,7 @@ func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, l
 	}
 
 	logger.Info("minio scheduled")
-	logger.Info("waiting for minio to be available...")
+	logger.Info("waiting for minio availability")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancelFunc()
 
@@ -340,7 +332,7 @@ func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, l
 		return nil, errors.New("minio server is not available")
 	}
 
-	logger.Info("minio server is available!")
+	logger.Info("minio server is available")
 	return minioServer, nil
 }
 
@@ -350,7 +342,7 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 		return errors.Wrap(err, "could not get s3 client")
 	}
 
-	logger.Info("checking for repo artifact...")
+	logger.Info("checking for repo artifact")
 	exists, err := s3Client.FileExists("workspace", "repo.tar.gz")
 	if err != nil {
 		logger.Error(errors.Wrap(err, "could not check for repo artifact"))
@@ -366,7 +358,7 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 		return err
 	}
 
-	logger.Info("waiting for repo artifact to be created...")
+	logger.Info("waiting for repo artifact to be created")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancelFunc()
 
@@ -374,7 +366,7 @@ func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, min
 	go c.waitForRepoArtifactToBeCreated(ctx, 5, s3Client, repoArtifactCreated)
 
 	if exists := <-repoArtifactCreated; !exists {
-		logger.Info("repo artifact was not created in the specified time frame; requeueing pipeline")
+		logger.Info("repo artifact was not created; requeueing pipeline")
 		new := *pipeline.DeepCopy()
 		if _, err := c.patchPipeline(new, pipeline); err != nil {
 			logger.Error(errors.Wrap(err, "could not requeue pipeline"))
@@ -393,7 +385,7 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipel
 	name := fmt.Sprintf("%s-clone-repo", pipeline.GetResourcePrefix())
 
 	// check to see if the job already exists
-	logger.Info("checking to see if the clone repo job for this pipeline is scheduled...")
+	logger.Info("ensuring clone repo job is scheduled")
 	if _, err := c.jobLister.Jobs(pipeline.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("clone repo job was not found; scheduling...")
@@ -418,11 +410,11 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipel
 				return errors.Wrap(err, "could not create clone repo job")
 			}
 
-			logger.Info("clone repo job is now scheduled!")
+			logger.Info("clone repo job is now scheduled")
 			return nil
 		}
 
-		return errors.Wrap(err, "could not fetch job")
+		return errors.Wrap(err, "could not fetch clone repo job")
 	}
 
 	logger.Info("clone repo job is scheduled")
@@ -474,24 +466,25 @@ func (c *PipelineController) ensureJobConfigMapExists(
 	configMapData map[string]string,
 	logger logrus.FieldLogger,
 ) error {
-	logger.Info("checking to see if configmap for job exists...")
+	logger.Info("checking for job configmap")
 	if _, err := c.configMapLister.ConfigMaps(pipeline.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
+			logger.Info("job configmap does not exist; creating")
 			resource := GetJobConfigMap(name, pipeline.GetResourceLabels(), configMapData)
 			_, err := c.kubeClient.CoreV1().ConfigMaps(pipeline.GetNamespace()).Create(&resource)
 
 			if err != nil {
-				return errors.Wrap(err, "could not create configmap for job")
+				return errors.Wrap(err, "could not create job configmap")
 			}
 
-			logger.Info("configmap for job created")
+			logger.Info("job configmap created")
 			return nil
 		}
 
-		return errors.Wrap(err, "could not find configmap for job")
+		return errors.Wrap(err, "could not get job configmap")
 	}
 
-	logger.Info("configmap for job exists")
+	logger.Info("job configmap exists")
 	return nil
 }
 

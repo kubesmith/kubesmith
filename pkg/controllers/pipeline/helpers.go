@@ -62,7 +62,6 @@ func NewPipelineController(
 				// create a tmp logger
 				tmpLogger := c.logger.WithFields(logrus.Fields{
 					"Name":       updatedPipeline.Name,
-					"Namespace":  updatedPipeline.Namespace,
 					"Phase":      updatedPipeline.Status.Phase,
 					"StageIndex": updatedPipeline.Status.StageIndex,
 				})

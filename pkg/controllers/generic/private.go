@@ -3,6 +3,7 @@ package generic
 import (
 	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/sync"
+	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -29,7 +30,7 @@ func (c *GenericController) processNextWorkItem() bool {
 		return true
 	}
 
-	glog.Error("Error in syncHandler, re-adding item to queue")
+	glog.Error(errors.Wrap(err, "Error in syncHandler, re-adding item to queue"))
 	// we had an error processing the item so add it back
 	// into the queue for re-processing with rate-limiting
 	c.Queue.AddRateLimited(key)
