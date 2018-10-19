@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kubesmith/kubesmith/pkg/s3"
+
 	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/annotations"
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
@@ -149,11 +151,11 @@ func (c *PipelineController) processQueuedPipeline(originalPipeline api.Pipeline
 func (c *PipelineController) processRunningPipeline(pipeline api.Pipeline, logger logrus.FieldLogger) error {
 	minioServer, err := c.ensureMinioServerIsRunning(pipeline, logger)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "could not ensure minio server is running")
 	}
 
 	if err := c.ensureRepoArtifactExists(pipeline, minioServer, logger); err != nil {
-		return err
+		return errors.Wrap(err, "could not ensure repo artifact exists")
 	}
 
 	logger.Info("ensuring jobs are scheduled")
@@ -266,12 +268,10 @@ func (c *PipelineController) cleanupMinioServerForPipeline(pipeline api.Pipeline
 	)
 
 	if err := minioServer.Delete(); err != nil {
-		logger.Error(errors.Wrap(err, "could not cleanup minio server resources"))
-		return err
+		return errors.Wrap(err, "could not cleanup minio server resources")
 	}
 
 	logger.Info("cleaned up minio server resources")
-
 	return nil
 }
 
@@ -314,7 +314,7 @@ func (c *PipelineController) getJobResourceName(pipeline api.Pipeline, jobIndex 
 }
 
 func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, logger logrus.FieldLogger) (*minio.MinioServer, error) {
-	logger.Info("ensuring minio server resources are scheduled...")
+	logger.Info("scheduling minio...")
 	minioServer := minio.NewMinioServer(
 		pipeline.GetNamespace(),
 		pipeline.GetResourcePrefix(),
@@ -325,12 +325,11 @@ func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, l
 	)
 
 	if err := minioServer.Create(); err != nil {
-		logger.Error(errors.Wrap(err, "could not ensure minio server resources are scheduled"))
-		return nil, err
+		return nil, errors.Wrap(err, "could not create minio server")
 	}
 
-	logger.Info("minio server resources are scheduled")
-	logger.Info("waiting for minio server to be available...")
+	logger.Info("minio scheduled")
+	logger.Info("waiting for minio to be available...")
 	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancelFunc()
 
@@ -346,21 +345,103 @@ func (c *PipelineController) ensureMinioServerIsRunning(pipeline api.Pipeline, l
 }
 
 func (c *PipelineController) ensureRepoArtifactExists(pipeline api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
-	logger.Warn("todo")
+	s3Client, err := minioServer.GetS3Client()
+	if err != nil {
+		return errors.Wrap(err, "could not get s3 client")
+	}
 
-	/*
-		LOGIC FOR THIS FUNC:
-		====================
+	logger.Info("checking for repo artifact...")
+	exists, err := s3Client.FileExists("workspace", "repo.tar.gz")
+	if err != nil {
+		logger.Error(errors.Wrap(err, "could not check for repo artifact"))
+		return err
+	} else if exists {
+		logger.Info("repo artifact exists")
+		return nil
+	}
 
-		- Check if the repository artifact (repo.tar.gz) exists
-				- If it does not exist:
-							- Ensure a job that will create the repository artifact is scheduled
-							- Wait for the repository artifact to exist (be sure to set a timeout)
-				- If it does exist:
-							- Do nothing
-	*/
+	logger.Info("repo artifact does not exist")
+	if err := c.ensureRepoArtifactJobIsScheduled(pipeline, minioServer, logger); err != nil {
+		logger.Error(err)
+		return err
+	}
 
+	logger.Info("waiting for repo artifact to be created...")
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelFunc()
+
+	repoArtifactCreated := make(chan bool, 1)
+	go c.waitForRepoArtifactToBeCreated(ctx, 5, s3Client, repoArtifactCreated)
+
+	if exists := <-repoArtifactCreated; !exists {
+		logger.Info("repo artifact was not created in the specified time frame; requeueing pipeline")
+		new := *pipeline.DeepCopy()
+		if _, err := c.patchPipeline(new, pipeline); err != nil {
+			logger.Error(errors.Wrap(err, "could not requeue pipeline"))
+			return err
+		}
+
+		logger.Info("pipeline requeued")
+		return err
+	}
+
+	logger.Info("repo artifact was created")
 	return nil
+}
+
+func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+	name := fmt.Sprintf("%s-clone-repo", pipeline.GetResourcePrefix())
+
+	// check to see if the job already exists
+	logger.Info("checking to see if the clone repo job for this pipeline is scheduled...")
+	if _, err := c.jobLister.Jobs(pipeline.GetNamespace()).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("clone repo job was not found; scheduling...")
+
+			host, err := minioServer.GetServiceHost()
+			if err != nil {
+				return err
+			}
+
+			job := GetRepoCloneJob(
+				name,
+				pipeline.GetWorkspaceSSHSecretName(),
+				pipeline.GetWorkspaceSSHSecretKey(),
+				pipeline.GetWorkspaceRepoURL(),
+				host,
+				9000,
+				minioServer.GetResourceName(),
+				pipeline.GetResourceLabels(),
+			)
+
+			if _, err := c.kubeClient.BatchV1().Jobs(pipeline.GetNamespace()).Create(&job); err != nil {
+				return errors.Wrap(err, "could not create clone repo job")
+			}
+
+			logger.Info("clone repo job is now scheduled!")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not fetch job")
+	}
+
+	logger.Info("clone repo job is scheduled")
+	return nil
+}
+
+func (c *PipelineController) waitForRepoArtifactToBeCreated(ctx context.Context, secondsInterval int, s3Client *s3.S3Client, repoArtifactCreated chan bool) {
+	for {
+		select {
+		case <-ctx.Done():
+			repoArtifactCreated <- false
+		default:
+			if exists, _ := s3Client.FileExists("workspace", "repo.tar.gz"); exists {
+				repoArtifactCreated <- true
+			}
+		}
+
+		time.Sleep(time.Second * time.Duration(secondsInterval))
+	}
 }
 
 func (c *PipelineController) getPipelineJobConfigMapData(job api.PipelineSpecJob) map[string]string {
@@ -441,9 +522,19 @@ func (c *PipelineController) ensureJobIsScheduled(
 				jobAnnotations[annotations.AllowFailure] = "true"
 			}
 
+			s3Host, err := minioServer.GetServiceHost()
+			if err != nil {
+				return err
+			}
+
 			resource := GetJob(
 				name,
 				job.Image,
+				s3Host,
+				9000,
+				pipeline.GetResourcePrefix(),
+				minioServer.GetResourceName(),
+				pipeline.GetWorkspacePath(),
 				jobAnnotations,
 				job.Environment,
 				c.getPipelineJobCommand(job),

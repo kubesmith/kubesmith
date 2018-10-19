@@ -25,8 +25,18 @@ type PipelineSpec struct {
 }
 
 type PipelineSpecWorkspace struct {
-	Path    string `json:"path"`
-	RepoURL string `json:"repoURL"`
+	Path    string                   `json:"path"`
+	RepoURL string                   `json:"repoURL"`
+	SSH     PipelineSpecWorkspaceSSH `json:"ssh"`
+}
+
+type PipelineSpecWorkspaceSSH struct {
+	Secret PipelineSpecWorkspaceSSHSecret `json:"secret"`
+}
+
+type PipelineSpecWorkspaceSSHSecret struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 type PipelineSpecJobTemplate struct {
@@ -573,4 +583,26 @@ func (p *Pipeline) AdvanceCurrentStage() {
 	}
 
 	p.Status.StageIndex = stageIndex
+}
+
+func (p *Pipeline) GetWorkspacePath() string {
+	path := p.Spec.Workspace.Path
+
+	if path == "" {
+		return "/kubesmith/workspace"
+	}
+
+	return path
+}
+
+func (p *Pipeline) GetWorkspaceRepoURL() string {
+	return p.Spec.Workspace.RepoURL
+}
+
+func (p *Pipeline) GetWorkspaceSSHSecretName() string {
+	return p.Spec.Workspace.SSH.Secret.Name
+}
+
+func (p *Pipeline) GetWorkspaceSSHSecretKey() string {
+	return p.Spec.Workspace.SSH.Secret.Key
 }

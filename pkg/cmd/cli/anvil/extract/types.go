@@ -1,7 +1,7 @@
 package extract
 
 import (
-	"github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
+	"github.com/kubesmith/kubesmith/pkg/s3"
 )
 
 type Options struct {

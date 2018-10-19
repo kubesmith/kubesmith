@@ -10,7 +10,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
-	"github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
+	"github.com/kubesmith/kubesmith/pkg/s3"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"

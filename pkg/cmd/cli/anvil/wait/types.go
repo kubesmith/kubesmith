@@ -1,6 +1,6 @@
 package wait
 
-import "github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
+import "github.com/kubesmith/kubesmith/pkg/s3"
 
 type Options struct {
 	S3            OptionsS3

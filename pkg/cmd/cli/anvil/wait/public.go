@@ -12,7 +12,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/artifacts"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
 	watcher "github.com/kubesmith/kubesmith/pkg/cmd/util/file-watcher"
-	"github.com/kubesmith/kubesmith/pkg/cmd/util/s3"
+	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"golang.org/x/net/context"

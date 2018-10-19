@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -158,4 +159,35 @@ func (m *MinioServer) WaitForAvailability(
 		// make sure to sleep so we don't hammer the api server
 		time.Sleep(time.Second * time.Duration(secondsInterval))
 	}
+}
+
+func (m *MinioServer) GetServiceHost() (string, error) {
+	if m.minioService == nil {
+		return "", errors.New("minio service has not been created")
+	}
+
+	host := fmt.Sprintf("%s.%s.svc", m.minioService.GetName(), m.minioService.GetNamespace())
+	return host, nil
+}
+
+func (m *MinioServer) GetS3Client() (*s3.S3Client, error) {
+	if m.minioService == nil {
+		return nil, errors.New("minio service has not been created")
+	} else if m.minioSecret == nil {
+		return nil, errors.New("minio secret has not been created")
+	}
+
+	_, err := m.GetServiceHost()
+	if err != nil {
+		return nil, err
+	}
+
+	return s3.NewS3Client(
+		// host,
+		"127.0.0.1",
+		int(m.minioService.Spec.Ports[0].Port),
+		string(m.minioSecret.Data["access-key"]),
+		string(m.minioSecret.Data["secret-key"]),
+		false,
+	)
 }
