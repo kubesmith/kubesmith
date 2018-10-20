@@ -9,22 +9,19 @@ import (
 )
 
 func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
-	job := action.GetObject().(*api.PipelineJob)
-	if job == nil {
-		c.logger.Panic(errors.New("programmer error; pipeline job is nil"))
-	}
+	cachedJob := action.GetObject().(api.PipelineJob)
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
 		logger := c.logger.WithFields(logrus.Fields{
-			"Name": job.GetName(),
+			"Name": cachedJob.GetName(),
 		})
 
-		if err := c.processDeletedPipelineJob(*job.DeepCopy(), logger); err != nil {
+		if err := c.processDeletedPipelineJob(*cachedJob.DeepCopy(), logger); err != nil {
 			return err
 		}
 	default:
-		job, err := c.pipelineJobLister.PipelineJobs(job.GetNamespace()).Get(job.GetName())
+		job, err := c.pipelineJobLister.PipelineJobs(cachedJob.GetNamespace()).Get(cachedJob.GetName())
 		if apierrors.IsNotFound(err) {
 			c.logger.Info("unable to find pipeline job")
 			return nil

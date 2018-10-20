@@ -39,17 +39,17 @@ func NewPipelineStageController(
 			AddFunc: func(obj interface{}) {
 				stage := obj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineStageAddAction(stage))
+				c.Queue.Add(sync.PipelineStageAddAction(*stage))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
 				updatedStage := updatedObj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineStageUpdateAction(updatedStage))
+				c.Queue.Add(sync.PipelineStageUpdateAction(*updatedStage))
 			},
 			DeleteFunc: func(obj interface{}) {
 				stage := obj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineStageDeleteAction(stage))
+				c.Queue.Add(sync.PipelineStageDeleteAction(*stage))
 			},
 		},
 	)

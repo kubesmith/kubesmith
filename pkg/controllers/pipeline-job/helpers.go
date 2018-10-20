@@ -39,17 +39,17 @@ func NewPipelineJobController(
 			AddFunc: func(obj interface{}) {
 				job := obj.(*v1.PipelineJob)
 
-				c.Queue.Add(sync.PipelineJobAddAction(job))
+				c.Queue.Add(sync.PipelineJobAddAction(*job))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
 				updatedJob := updatedObj.(*v1.PipelineJob)
 
-				c.Queue.Add(sync.PipelineJobUpdateAction(updatedJob))
+				c.Queue.Add(sync.PipelineJobUpdateAction(*updatedJob))
 			},
 			DeleteFunc: func(obj interface{}) {
 				job := obj.(*v1.PipelineJob)
 
-				c.Queue.Add(sync.PipelineJobDeleteAction(job))
+				c.Queue.Add(sync.PipelineJobDeleteAction(*job))
 			},
 		},
 	)

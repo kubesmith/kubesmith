@@ -59,17 +59,17 @@ func NewPipelineController(
 			AddFunc: func(obj interface{}) {
 				pipeline := obj.(*v1.Pipeline)
 
-				c.Queue.Add(sync.PipelineAddAction(pipeline))
+				c.Queue.Add(sync.PipelineAddAction(*pipeline))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
 				updatedPipeline := updatedObj.(*v1.Pipeline)
 
-				c.Queue.Add(sync.PipelineUpdateAction(updatedPipeline))
+				c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
 			},
 			DeleteFunc: func(obj interface{}) {
 				pipeline := obj.(*v1.Pipeline)
 
-				c.Queue.Add(sync.PipelineDeleteAction(pipeline))
+				c.Queue.Add(sync.PipelineDeleteAction(*pipeline))
 			},
 		},
 	)

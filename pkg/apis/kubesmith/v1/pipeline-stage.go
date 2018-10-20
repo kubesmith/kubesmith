@@ -7,8 +7,6 @@ import (
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -68,21 +66,6 @@ func (p *PipelineStage) GetLastUpdatedTime() metav1.Time {
 
 func (p *PipelineStage) GetFailureReason() string {
 	return p.Status.FailureReason
-}
-
-func (p *PipelineStage) GetResourceLabelSelector() (labels.Selector, error) {
-	selector := labels.NewSelector()
-
-	for key, value := range p.GetLabels() {
-		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create label requirement")
-		}
-
-		selector.Add(*req)
-	}
-
-	return selector, nil
 }
 
 func (p *PipelineStage) HasNoPhase() bool {

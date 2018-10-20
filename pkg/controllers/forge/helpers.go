@@ -39,17 +39,17 @@ func NewForgeController(
 			AddFunc: func(obj interface{}) {
 				forge := obj.(*v1.Forge)
 
-				c.Queue.Add(sync.ForgeAddAction(forge))
+				c.Queue.Add(sync.ForgeAddAction(*forge))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
 				updatedForge := updatedObj.(*v1.Forge)
 
-				c.Queue.Add(sync.ForgeUpdateAction(updatedForge))
+				c.Queue.Add(sync.ForgeUpdateAction(*updatedForge))
 			},
 			DeleteFunc: func(obj interface{}) {
 				forge := obj.(*v1.Forge)
 
-				c.Queue.Add(sync.ForgeDeleteAction(forge))
+				c.Queue.Add(sync.ForgeDeleteAction(*forge))
 			},
 		},
 	)

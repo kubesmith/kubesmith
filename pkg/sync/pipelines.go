@@ -6,7 +6,7 @@ import (
 
 type PipelineSyncAction struct {
 	action   SyncActionType
-	pipeline *api.Pipeline
+	pipeline api.Pipeline
 }
 
 func (a *PipelineSyncAction) GetAction() SyncActionType {
@@ -17,19 +17,19 @@ func (a *PipelineSyncAction) GetObject() interface{} {
 	return a.pipeline
 }
 
-func PipelineAddAction(pipeline *api.Pipeline) *PipelineSyncAction {
+func PipelineAddAction(pipeline api.Pipeline) *PipelineSyncAction {
 	return NewPipelineSyncAction(pipeline, SyncActionAdd)
 }
 
-func PipelineUpdateAction(pipeline *api.Pipeline) *PipelineSyncAction {
+func PipelineUpdateAction(pipeline api.Pipeline) *PipelineSyncAction {
 	return NewPipelineSyncAction(pipeline, SyncActionUpdate)
 }
 
-func PipelineDeleteAction(pipeline *api.Pipeline) *PipelineSyncAction {
+func PipelineDeleteAction(pipeline api.Pipeline) *PipelineSyncAction {
 	return NewPipelineSyncAction(pipeline, SyncActionDelete)
 }
 
-func NewPipelineSyncAction(pipeline *api.Pipeline, actionType SyncActionType) *PipelineSyncAction {
+func NewPipelineSyncAction(pipeline api.Pipeline, actionType SyncActionType) *PipelineSyncAction {
 	return &PipelineSyncAction{
 		action:   actionType,
 		pipeline: pipeline,

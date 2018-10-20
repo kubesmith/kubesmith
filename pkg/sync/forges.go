@@ -6,7 +6,7 @@ import (
 
 type ForgeSyncAction struct {
 	action SyncActionType
-	forge  *api.Forge
+	forge  api.Forge
 }
 
 func (a *ForgeSyncAction) GetAction() SyncActionType {
@@ -17,19 +17,19 @@ func (a *ForgeSyncAction) GetObject() interface{} {
 	return a.forge
 }
 
-func ForgeAddAction(forge *api.Forge) *ForgeSyncAction {
+func ForgeAddAction(forge api.Forge) *ForgeSyncAction {
 	return NewForgeSyncAction(forge, SyncActionAdd)
 }
 
-func ForgeUpdateAction(forge *api.Forge) *ForgeSyncAction {
+func ForgeUpdateAction(forge api.Forge) *ForgeSyncAction {
 	return NewForgeSyncAction(forge, SyncActionUpdate)
 }
 
-func ForgeDeleteAction(forge *api.Forge) *ForgeSyncAction {
+func ForgeDeleteAction(forge api.Forge) *ForgeSyncAction {
 	return NewForgeSyncAction(forge, SyncActionDelete)
 }
 
-func NewForgeSyncAction(forge *api.Forge, actionType SyncActionType) *ForgeSyncAction {
+func NewForgeSyncAction(forge api.Forge, actionType SyncActionType) *ForgeSyncAction {
 	return &ForgeSyncAction{
 		action: actionType,
 		forge:  forge,

@@ -14,25 +14,23 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func (c *PipelineController) processPipeline(action sync.SyncAction) error {
-	pipeline := action.GetObject().(*api.Pipeline)
-	if pipeline == nil {
-		c.logger.Panic(errors.New("programmer error; pipeline is nil"))
-	}
+	cachedPipeline := action.GetObject().(api.Pipeline)
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
 		logger := c.logger.WithFields(logrus.Fields{
-			"Name": pipeline.GetName(),
+			"Name": cachedPipeline.GetName(),
 		})
 
-		if err := c.processDeletedPipeline(*pipeline.DeepCopy(), logger); err != nil {
+		if err := c.processDeletedPipeline(*cachedPipeline.DeepCopy(), logger); err != nil {
 			return err
 		}
 	default:
-		pipeline, err := c.pipelineLister.Pipelines(pipeline.GetNamespace()).Get(pipeline.GetName())
+		pipeline, err := c.pipelineLister.Pipelines(cachedPipeline.GetNamespace()).Get(cachedPipeline.GetName())
 		if apierrors.IsNotFound(err) {
 			c.logger.Info("unable to find pipeline")
 			return nil
@@ -157,7 +155,7 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 
 	// create a selector for listing resources associated to pipeline jobs
 	logger.Info("creating label selector for associated resources")
-	labelSelector, err := original.GetResourceLabelSelector()
+	labelSelector, err := c.getResourceLabelSelector(c.getPipelineLabels(original))
 	if err != nil {
 		return errors.Wrap(err, "could not create label selector for pipeline")
 	}
@@ -184,10 +182,42 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 			return errors.Wrapf(err, "could not delete pipeline stage: %s/%s", stage.GetName(), stage.GetNamespace())
 		}
 	}
-
 	logger.Info("deleted pipeline stages")
+
+	// attempt to get all jobs associated to the pipeline
+	logger.Info("retrieving jobs")
+	jobs, err := c.jobLister.Jobs(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve jobs")
+	}
+	logger.Info("retrieved jobs")
+
+	// delete all of the jobs associated to the pipeline
+	logger.Info("deleting jobs")
+	for _, job := range jobs {
+		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
+			return errors.Wrapf(err, "could not delete job: %s/%s", job.GetName(), job.GetNamespace())
+		}
+	}
+
+	logger.Info("deleted jobs")
 	logger.Info("pipeline cleaned up")
 	return nil
+}
+
+func (c *PipelineController) getResourceLabelSelector(resourceLabels map[string]string) (labels.Selector, error) {
+	selector := labels.NewSelector()
+
+	for key, value := range resourceLabels {
+		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create label requirement")
+		}
+
+		selector.Add(*req)
+	}
+
+	return selector, nil
 }
 
 func (c *PipelineController) patchPipeline(updated, original api.Pipeline) (*api.Pipeline, error) {
@@ -219,13 +249,20 @@ func (c *PipelineController) canRunAnotherPipeline(original api.Pipeline) (bool,
 	return false, nil
 }
 
+func (c *PipelineController) getPipelineLabels(pipeline api.Pipeline) map[string]string {
+	labels := pipeline.GetResourceLabels()
+	labels["Controller"] = "Pipeline"
+
+	return labels
+}
+
 func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, logger logrus.FieldLogger) (*minio.MinioServer, error) {
 	logger.Info("scheduling minio...")
 	minioServer := minio.NewMinioServer(
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		original.GetResourceLabels(),
+		c.getPipelineLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,
@@ -294,12 +331,12 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, min
 	return nil
 }
 
-func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
-	name := fmt.Sprintf("%s-clone-repo", pipeline.GetResourcePrefix())
+func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+	name := fmt.Sprintf("%s-clone-repo", original.GetResourcePrefix())
 
 	// check to see if the job already exists
 	logger.Info("ensuring clone repo job is scheduled")
-	if _, err := c.jobLister.Jobs(pipeline.GetNamespace()).Get(name); err != nil {
+	if _, err := c.jobLister.Jobs(original.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("clone repo job was not found; scheduling...")
 
@@ -310,16 +347,16 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipel
 
 			job := GetRepoCloneJob(
 				name,
-				pipeline.GetWorkspaceSSHSecretName(),
-				pipeline.GetWorkspaceSSHSecretKey(),
-				pipeline.GetWorkspaceRepoURL(),
+				original.GetWorkspaceSSHSecretName(),
+				original.GetWorkspaceSSHSecretKey(),
+				original.GetWorkspaceRepoURL(),
 				host,
 				minioServer.GetPort(),
 				minioServer.GetResourceName(),
-				pipeline.GetResourceLabels(),
+				c.getPipelineLabels(original),
 			)
 
-			if _, err := c.kubeClient.BatchV1().Jobs(pipeline.GetNamespace()).Create(&job); err != nil {
+			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not create clone repo job")
 			}
 
@@ -355,7 +392,7 @@ func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		original.GetResourceLabels(),
+		c.getPipelineLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,

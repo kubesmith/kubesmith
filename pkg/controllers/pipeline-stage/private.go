@@ -9,22 +9,19 @@ import (
 )
 
 func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) error {
-	stage := action.GetObject().(*api.PipelineStage)
-	if stage == nil {
-		c.logger.Panic(errors.New("programmer error; pipeline stage is nil"))
-	}
+	cachedStage := action.GetObject().(api.PipelineStage)
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
 		logger := c.logger.WithFields(logrus.Fields{
-			"Name": stage.GetName(),
+			"Name": cachedStage.GetName(),
 		})
 
-		if err := c.processDeletedPipelineStage(*stage.DeepCopy(), logger); err != nil {
+		if err := c.processDeletedPipelineStage(*cachedStage.DeepCopy(), logger); err != nil {
 			return err
 		}
 	default:
-		stage, err := c.pipelineStageLister.PipelineStages(stage.GetNamespace()).Get(stage.GetName())
+		stage, err := c.pipelineStageLister.PipelineStages(cachedStage.GetNamespace()).Get(cachedStage.GetName())
 		if apierrors.IsNotFound(err) {
 			c.logger.Info("unable to find pipeline stage")
 			return nil

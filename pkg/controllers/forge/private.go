@@ -9,22 +9,18 @@ import (
 )
 
 func (c *ForgeController) processForge(action sync.SyncAction) error {
-	forge := action.GetObject().(*api.Forge)
-	if forge == nil {
-		c.logger.Panic(errors.New("programmer error; forge is nil"))
-	}
-
+	cachedForge := action.GetObject().(api.Forge)
 	logger := c.logger.WithFields(logrus.Fields{
-		"Name": forge.GetName(),
+		"Name": cachedForge.GetName(),
 	})
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
-		if err := c.processDeletedForge(*forge.DeepCopy(), logger); err != nil {
+		if err := c.processDeletedForge(*cachedForge.DeepCopy(), logger); err != nil {
 			return err
 		}
 	default:
-		forge, err := c.forgeLister.Forges(forge.GetNamespace()).Get(forge.GetName())
+		forge, err := c.forgeLister.Forges(cachedForge.GetNamespace()).Get(cachedForge.GetName())
 		if apierrors.IsNotFound(err) {
 			c.logger.Info("unable to find forge")
 			return nil

@@ -36,20 +36,10 @@ func NewJobController(
 
 	jobInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				job := obj.(*batchv1.Job)
-
-				c.Queue.Add(sync.JobAddAction(job))
-			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
 				updatedJob := updatedObj.(*batchv1.Job)
 
-				c.Queue.Add(sync.JobUpdateAction(updatedJob))
-			},
-			DeleteFunc: func(obj interface{}) {
-				job := obj.(*batchv1.Job)
-
-				c.Queue.Add(sync.JobDeleteAction(job))
+				c.Queue.Add(sync.JobUpdateAction(*updatedJob))
 			},
 		},
 	)
