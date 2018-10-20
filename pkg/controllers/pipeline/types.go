@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	appListersv1 "k8s.io/client-go/listers/apps/v1"
+	batchListersv1 "k8s.io/client-go/listers/batch/v1"
 	coreListersv1 "k8s.io/client-go/listers/core/v1"
 )
 
@@ -24,5 +25,6 @@ type PipelineController struct {
 	secretLister        coreListersv1.SecretLister
 	deploymentLister    appListersv1.DeploymentLister
 	serviceLister       coreListersv1.ServiceLister
+	jobLister           batchListersv1.JobLister
 	clock               clock.Clock
 }

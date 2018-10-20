@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/clock"
 	appInformersv1 "k8s.io/client-go/informers/apps/v1"
+	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
 	coreInformersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -25,6 +26,7 @@ func NewPipelineController(
 	secretInformer coreInformersv1.SecretInformer,
 	deploymentInformer appInformersv1.DeploymentInformer,
 	serviceInformer coreInformersv1.ServiceInformer,
+	jobInformer batchInformersv1.JobInformer,
 ) controllers.Interface {
 	c := &PipelineController{
 		GenericController:   generic.NewGenericController("Pipeline"),
@@ -37,6 +39,7 @@ func NewPipelineController(
 		secretLister:        secretInformer.Lister(),
 		deploymentLister:    deploymentInformer.Lister(),
 		serviceLister:       serviceInformer.Lister(),
+		jobLister:           jobInformer.Lister(),
 		clock:               &clock.RealClock{},
 	}
 
@@ -48,6 +51,7 @@ func NewPipelineController(
 		secretInformer.Informer().HasSynced,
 		deploymentInformer.Informer().HasSynced,
 		serviceInformer.Informer().HasSynced,
+		jobInformer.Informer().HasSynced,
 	)
 
 	pipelineInformer.Informer().AddEventHandler(

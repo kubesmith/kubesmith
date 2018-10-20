@@ -2,10 +2,12 @@ package pipeline
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline/minio"
+	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -251,7 +253,100 @@ func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, l
 }
 
 func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+	s3Client, err := minioServer.GetS3Client()
+	if err != nil {
+		return errors.Wrap(err, "could not get s3 client")
+	}
+
+	logger.Info("checking for repo artifact")
+	exists, err := s3Client.FileExists("workspace", "repo.tar.gz")
+	if err != nil {
+		return errors.Wrap(err, "could not check for repo artifact")
+	} else if exists {
+		logger.Info("repo artifact exists")
+		return nil
+	}
+
+	logger.Info("repo artifact does not exist")
+	if err := c.ensureRepoArtifactJobIsScheduled(original, minioServer, logger); err != nil {
+		return err
+	}
+
+	logger.Info("waiting for repo artifact to be created")
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancelFunc()
+
+	repoArtifactCreated := make(chan bool, 1)
+	go c.waitForRepoArtifactToBeCreated(ctx, 5, s3Client, repoArtifactCreated)
+
+	if exists := <-repoArtifactCreated; !exists {
+		logger.Info("repo artifact was not created; requeueing pipeline")
+		new := *original.DeepCopy()
+		if _, err := c.patchPipeline(new, original); err != nil {
+			return errors.Wrap(err, "could not requeue pipeline")
+		}
+
+		logger.Info("pipeline requeued")
+		return err
+	}
+
+	logger.Info("repo artifact was created")
 	return nil
+}
+
+func (c *PipelineController) ensureRepoArtifactJobIsScheduled(pipeline api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+	name := fmt.Sprintf("%s-clone-repo", pipeline.GetResourcePrefix())
+
+	// check to see if the job already exists
+	logger.Info("ensuring clone repo job is scheduled")
+	if _, err := c.jobLister.Jobs(pipeline.GetNamespace()).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("clone repo job was not found; scheduling...")
+
+			host, err := minioServer.GetServiceHost()
+			if err != nil {
+				return err
+			}
+
+			job := GetRepoCloneJob(
+				name,
+				pipeline.GetWorkspaceSSHSecretName(),
+				pipeline.GetWorkspaceSSHSecretKey(),
+				pipeline.GetWorkspaceRepoURL(),
+				host,
+				minioServer.GetPort(),
+				minioServer.GetResourceName(),
+				pipeline.GetResourceLabels(),
+			)
+
+			if _, err := c.kubeClient.BatchV1().Jobs(pipeline.GetNamespace()).Create(&job); err != nil {
+				return errors.Wrap(err, "could not create clone repo job")
+			}
+
+			logger.Info("clone repo job is now scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not fetch clone repo job")
+	}
+
+	logger.Info("clone repo job is scheduled")
+	return nil
+}
+
+func (c *PipelineController) waitForRepoArtifactToBeCreated(ctx context.Context, secondsInterval int, s3Client *s3.S3Client, repoArtifactCreated chan bool) {
+	for {
+		select {
+		case <-ctx.Done():
+			repoArtifactCreated <- false
+		default:
+			if exists, _ := s3Client.FileExists("workspace", "repo.tar.gz"); exists {
+				repoArtifactCreated <- true
+			}
+		}
+
+		time.Sleep(time.Second * time.Duration(secondsInterval))
+	}
 }
 
 func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline, logger logrus.FieldLogger) error {
