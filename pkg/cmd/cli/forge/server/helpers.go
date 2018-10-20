@@ -12,8 +12,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd"
+	"github.com/kubesmith/kubesmith/pkg/controllers/forge"
+	"github.com/kubesmith/kubesmith/pkg/controllers/job"
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline"
 	pipelinejob "github.com/kubesmith/kubesmith/pkg/controllers/pipeline-job"
+	pipelinestage "github.com/kubesmith/kubesmith/pkg/controllers/pipeline-stage"
 	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,23 +72,38 @@ func NewServer(o *Options) *Server {
 	)
 
 	// setup our controllers
+	forgeController := forge.NewForgeController(
+		logger,
+		o.kubeClient,
+		o.client.KubesmithV1(),
+		kubesmithInformerFactory.Kubesmith().V1().Forges(),
+	)
+
 	pipelineController := pipeline.NewPipelineController(
-		o.Namespace,
-		o.MaxRunningPipelines,
 		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
-		kubeInformerFactory.Apps().V1().Deployments(),
-		kubeInformerFactory.Batch().V1().Jobs(),
-		kubeInformerFactory.Core().V1().ConfigMaps(),
+	)
+
+	pipelineStageController := pipelinestage.NewPipelineStageController(
+		logger,
+		o.kubeClient,
+		o.client.KubesmithV1(),
+		kubesmithInformerFactory.Kubesmith().V1().PipelineStages(),
 	)
 
 	pipelineJobController := pipelinejob.NewPipelineJobController(
 		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
-		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
+		kubesmithInformerFactory.Kubesmith().V1().PipelineJobs(),
+	)
+
+	jobController := job.NewJobController(
+		logger,
+		o.kubeClient,
+		o.client.KubesmithV1(),
 		kubeInformerFactory.Batch().V1().Jobs(),
 	)
 
@@ -101,8 +119,12 @@ func NewServer(o *Options) *Server {
 		cancelContext:            cancelContext,
 		kubesmithInformerFactory: kubesmithInformerFactory,
 		kubeInformerFactory:      kubeInformerFactory,
-		pipelineController:       pipelineController,
-		pipelineJobController:    pipelineJobController,
+
+		forgeController:         forgeController,
+		pipelineController:      pipelineController,
+		pipelineStageController: pipelineStageController,
+		pipelineJobController:   pipelineJobController,
+		jobController:           jobController,
 	}
 }
 

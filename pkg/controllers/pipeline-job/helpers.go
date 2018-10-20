@@ -1,14 +1,14 @@
 package pipelinejob
 
 import (
+	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
-	kubesmithInformers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
+	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/sirupsen/logrus"
-	batchv1 "k8s.io/api/batch/v1"
-	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -17,44 +17,39 @@ func NewPipelineJobController(
 	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
-	pipelineInformer kubesmithInformers.PipelineInformer,
-	jobsInformer batchInformersv1.JobInformer,
+	pipelineJobInformer informers.PipelineJobInformer,
 ) controllers.Interface {
 	c := &PipelineJobController{
 		GenericController: generic.NewGenericController("PipelineJob"),
 		logger:            logger.WithField("controller", "PipelineJob"),
 		kubeClient:        kubeClient,
 		kubesmithClient:   kubesmithClient,
-		pipelineLister:    pipelineInformer.Lister(),
-		jobLister:         jobsInformer.Lister(),
+		pipelineJobLister: pipelineJobInformer.Lister(),
+		clock:             &clock.RealClock{},
 	}
 
 	c.SyncHandler = c.processPipelineJob
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
-		jobsInformer.Informer().HasSynced,
+		pipelineJobInformer.Informer().HasSynced,
 	)
 
-	// setup event handlers for jobs
-	jobsInformer.Informer().AddEventHandler(
+	pipelineJobInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				job := obj.(*batchv1.Job)
+				job := obj.(*v1.PipelineJob)
 
-				if isPipelineJob := c.jobIsPipelineJob(job); !isPipelineJob {
-					return
-				}
-
-				c.Queue.Add(sync.JobAddAction(job))
+				c.Queue.Add(sync.PipelineJobAddAction(job))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
-				updatedJob := updatedObj.(*batchv1.Job)
+				updatedJob := updatedObj.(*v1.PipelineJob)
 
-				if isPipelineJob := c.jobIsPipelineJob(updatedJob); !isPipelineJob {
-					return
-				}
+				c.Queue.Add(sync.PipelineJobUpdateAction(updatedJob))
+			},
+			DeleteFunc: func(obj interface{}) {
+				job := obj.(*v1.PipelineJob)
 
-				c.Queue.Add(sync.JobUpdateAction(updatedJob))
+				c.Queue.Add(sync.PipelineJobDeleteAction(job))
 			},
 		},
 	)

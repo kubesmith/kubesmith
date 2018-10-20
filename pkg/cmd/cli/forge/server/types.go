@@ -30,6 +30,10 @@ type Server struct {
 	cancelContext            context.CancelFunc
 	kubesmithInformerFactory kubesmithInformers.SharedInformerFactory
 	kubeInformerFactory      kubeInformers.SharedInformerFactory
-	pipelineController       controllers.Interface
-	pipelineJobController    controllers.Interface
+
+	forgeController         controllers.Interface
+	pipelineController      controllers.Interface
+	pipelineStageController controllers.Interface
+	pipelineJobController   controllers.Interface
+	jobController           controllers.Interface
 }

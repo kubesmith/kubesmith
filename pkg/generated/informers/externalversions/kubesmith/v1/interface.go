@@ -28,6 +28,10 @@ type Interface interface {
 	Forges() ForgeInformer
 	// Pipelines returns a PipelineInformer.
 	Pipelines() PipelineInformer
+	// PipelineJobs returns a PipelineJobInformer.
+	PipelineJobs() PipelineJobInformer
+	// PipelineStages returns a PipelineStageInformer.
+	PipelineStages() PipelineStageInformer
 }
 
 type version struct {
@@ -49,4 +53,14 @@ func (v *version) Forges() ForgeInformer {
 // Pipelines returns a PipelineInformer.
 func (v *version) Pipelines() PipelineInformer {
 	return &pipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// PipelineJobs returns a PipelineJobInformer.
+func (v *version) PipelineJobs() PipelineJobInformer {
+	return &pipelineJobInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// PipelineStages returns a PipelineStageInformer.
+func (v *version) PipelineStages() PipelineStageInformer {
+	return &pipelineStageInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

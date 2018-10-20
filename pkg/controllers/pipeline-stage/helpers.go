@@ -1,4 +1,4 @@
-package pipeline
+package pipelinestage
 
 import (
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
@@ -13,43 +13,43 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func NewPipelineController(
+func NewPipelineStageController(
 	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
-	pipelineInformer informers.PipelineInformer,
+	pipelineStageInformer informers.PipelineStageInformer,
 ) controllers.Interface {
-	c := &PipelineController{
-		GenericController: generic.NewGenericController("Pipeline"),
-		logger:            logger.WithField("controller", "Pipeline"),
-		kubeClient:        kubeClient,
-		kubesmithClient:   kubesmithClient,
-		pipelineLister:    pipelineInformer.Lister(),
-		clock:             &clock.RealClock{},
+	c := &PipelineStageController{
+		GenericController:   generic.NewGenericController("PipelineStage"),
+		logger:              logger.WithField("controller", "PipelineStage"),
+		kubeClient:          kubeClient,
+		kubesmithClient:     kubesmithClient,
+		pipelineStageLister: pipelineStageInformer.Lister(),
+		clock:               &clock.RealClock{},
 	}
 
-	c.SyncHandler = c.processPipeline
+	c.SyncHandler = c.processPipelineStage
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
-		pipelineInformer.Informer().HasSynced,
+		pipelineStageInformer.Informer().HasSynced,
 	)
 
-	pipelineInformer.Informer().AddEventHandler(
+	pipelineStageInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				pipeline := obj.(*v1.Pipeline)
+				stage := obj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineAddAction(pipeline))
+				c.Queue.Add(sync.PipelineStageAddAction(stage))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
-				updatedPipeline := updatedObj.(*v1.Pipeline)
+				updatedStage := updatedObj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineUpdateAction(updatedPipeline))
+				c.Queue.Add(sync.PipelineStageUpdateAction(updatedStage))
 			},
 			DeleteFunc: func(obj interface{}) {
-				pipeline := obj.(*v1.Pipeline)
+				stage := obj.(*v1.PipelineStage)
 
-				c.Queue.Add(sync.PipelineDeleteAction(pipeline))
+				c.Queue.Add(sync.PipelineStageDeleteAction(stage))
 			},
 		},
 	)

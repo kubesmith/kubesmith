@@ -1,4 +1,4 @@
-package pipeline
+package pipelinestage
 
 import (
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
@@ -9,13 +9,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type PipelineController struct {
+type PipelineStageController struct {
 	*generic.GenericController
 
 	logger          logrus.FieldLogger
 	kubeClient      kubernetes.Interface
 	kubesmithClient kubesmithv1.KubesmithV1Interface
 
-	pipelineLister kubesmithListersv1.PipelineLister
-	clock          clock.Clock
+	pipelineStageLister kubesmithListersv1.PipelineStageLister
+	clock               clock.Clock
 }

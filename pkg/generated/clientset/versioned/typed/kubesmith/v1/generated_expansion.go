@@ -21,3 +21,7 @@ package v1
 type ForgeExpansion interface{}
 
 type PipelineExpansion interface{}
+
+type PipelineJobExpansion interface{}
+
+type PipelineStageExpansion interface{}

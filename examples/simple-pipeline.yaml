@@ -13,7 +13,7 @@ spec:
         key: 2db1faf68f6fc212f0d7c4a728aa30d2
 
   environment:
-  - SAMPLE_GLOBAL_VAR=foobar
+    SAMPLE_GLOBAL_VAR: foobar
 
   templates:
   - name: default
@@ -66,8 +66,8 @@ spec:
       /bin/sh -x /kubesmith/scripts/second-script.sh;
       /bin/sh -x /kubesmith/scripts/third-script.sh;
     environment:
-    - FOO=hello, world
-    - SAMPLE_GLOBAL_VAR=really cool!
+      FOO: hello, world
+      SAMPLE_GLOBAL_VAR: really cool!
     configMapData:
       first-script.sh: |
         echo "${FOO} from first script"

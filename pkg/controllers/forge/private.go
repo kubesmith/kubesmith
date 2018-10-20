@@ -1,43 +1,54 @@
 package forge
 
 import (
-	"github.com/golang/glog"
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	"github.com/sirupsen/logrus"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-func (c *ForgeController) processForge(key string) error {
-	ns, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		return errors.Wrap(err, "error splitting queue key")
+func (c *ForgeController) processForge(action sync.SyncAction) error {
+	forge := action.GetObject().(*api.Forge)
+	if forge == nil {
+		c.logger.Panic(errors.New("programmer error; forge is nil"))
 	}
 
-	forge, err := c.forgeLister.Forges(ns).Get(name)
-	if err != nil {
-		return errors.Wrap(err, "error getting forge")
-	}
+	logger := c.logger.WithFields(logrus.Fields{
+		"Name": forge.GetName(),
+	})
 
-	_ = forge
+	switch action.GetAction() {
+	case sync.SyncActionDelete:
+		if err := c.processDeletedForge(*forge.DeepCopy(), logger); err != nil {
+			return err
+		}
+	default:
+		forge, err := c.forgeLister.Forges(forge.GetNamespace()).Get(forge.GetName())
+		if apierrors.IsNotFound(err) {
+			c.logger.Info("unable to find forge")
+			return nil
+		} else if err != nil {
+			return errors.Wrap(err, "error getting forge")
+		}
+
+		_ = forge
+		logger.Info("todo: processing forge")
+	}
 
 	return nil
 }
 
-func (c *ForgeController) resync() {
-	list, err := c.forgeLister.List(labels.Everything())
+func (c *ForgeController) processDeletedForge(original api.Forge, logger logrus.FieldLogger) error {
+	logger.Info("todo: processing deleted forge")
+	return nil
+}
+
+func (c *ForgeController) patchForge(updated, original api.Forge) (*api.Forge, error) {
+	patchType, patchBytes, err := updated.GetPatchFromOriginal(original)
 	if err != nil {
-		glog.V(1).Info("error listing forges")
-		glog.Error(err)
-		return
+		return nil, err
 	}
 
-	for _, forge := range list {
-		key, err := cache.MetaNamespaceKeyFunc(forge)
-		if err != nil {
-			glog.Errorf("error generating key for forge; key: %s", forge.Name)
-			continue
-		}
-
-		c.Queue.Add(key)
-	}
+	return c.kubesmithClient.Forges(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
 }

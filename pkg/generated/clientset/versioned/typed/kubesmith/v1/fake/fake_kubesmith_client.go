@@ -36,6 +36,14 @@ func (c *FakeKubesmithV1) Pipelines(namespace string) v1.PipelineInterface {
 	return &FakePipelines{c, namespace}
 }
 
+func (c *FakeKubesmithV1) PipelineJobs(namespace string) v1.PipelineJobInterface {
+	return &FakePipelineJobs{c, namespace}
+}
+
+func (c *FakeKubesmithV1) PipelineStages(namespace string) v1.PipelineStageInterface {
+	return &FakePipelineStages{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeKubesmithV1) RESTClient() rest.Interface {

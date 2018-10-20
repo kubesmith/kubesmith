@@ -33,3 +33,19 @@ type PipelineListerExpansion interface{}
 // PipelineNamespaceListerExpansion allows custom methods to be added to
 // PipelineNamespaceLister.
 type PipelineNamespaceListerExpansion interface{}
+
+// PipelineJobListerExpansion allows custom methods to be added to
+// PipelineJobLister.
+type PipelineJobListerExpansion interface{}
+
+// PipelineJobNamespaceListerExpansion allows custom methods to be added to
+// PipelineJobNamespaceLister.
+type PipelineJobNamespaceListerExpansion interface{}
+
+// PipelineStageListerExpansion allows custom methods to be added to
+// PipelineStageLister.
+type PipelineStageListerExpansion interface{}
+
+// PipelineStageNamespaceListerExpansion allows custom methods to be added to
+// PipelineStageNamespaceLister.
+type PipelineStageNamespaceListerExpansion interface{}

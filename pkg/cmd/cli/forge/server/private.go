@@ -12,10 +12,24 @@ import (
 func (s *Server) runControllers() error {
 	var wg sync.WaitGroup
 
+	// start the forge controller
+	wg.Add(1)
+	go func() {
+		s.forgeController.Run(s.ctx, 1)
+		wg.Done()
+	}()
+
 	// start the pipeline controller
 	wg.Add(1)
 	go func() {
 		s.pipelineController.Run(s.ctx, 1)
+		wg.Done()
+	}()
+
+	// start the pipeline stage controller
+	wg.Add(1)
+	go func() {
+		s.pipelineStageController.Run(s.ctx, 1)
 		wg.Done()
 	}()
 
@@ -26,6 +40,13 @@ func (s *Server) runControllers() error {
 		wg.Done()
 	}()
 
+	// start the job controller
+	wg.Add(1)
+	go func() {
+		s.jobController.Run(s.ctx, 1)
+		wg.Done()
+	}()
+
 	// start the shared informers after all of our controllers
 	go s.kubesmithInformerFactory.Start(s.ctx.Done())
 	go s.kubeInformerFactory.Start(s.ctx.Done())
@@ -33,7 +54,10 @@ func (s *Server) runControllers() error {
 	// setup the cache sync waiter
 	cache.WaitForCacheSync(
 		s.ctx.Done(),
+		s.kubesmithInformerFactory.Kubesmith().V1().Forges().Informer().HasSynced,
 		s.kubesmithInformerFactory.Kubesmith().V1().Pipelines().Informer().HasSynced,
+		s.kubesmithInformerFactory.Kubesmith().V1().PipelineStages().Informer().HasSynced,
+		s.kubesmithInformerFactory.Kubesmith().V1().PipelineJobs().Informer().HasSynced,
 		s.kubeInformerFactory.Apps().V1().Deployments().Informer().HasSynced,
 		s.kubeInformerFactory.Batch().V1().Jobs().Informer().HasSynced,
 		s.kubeInformerFactory.Core().V1().ConfigMaps().Informer().HasSynced,

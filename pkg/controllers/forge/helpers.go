@@ -1,21 +1,30 @@
 package forge
 
 import (
-	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
-	api "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
 	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
+	"github.com/kubesmith/kubesmith/pkg/sync"
+	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
-func NewForgeController(forgeClient api.ForgesGetter, forgeInformer informers.ForgeInformer) controllers.Interface {
+func NewForgeController(
+	logger *logrus.Logger,
+	kubeClient kubernetes.Interface,
+	kubesmithClient kubesmithv1.KubesmithV1Interface,
+	forgeInformer informers.ForgeInformer,
+) controllers.Interface {
 	c := &ForgeController{
-		GenericController: generic.NewGenericController("forge"),
+		GenericController: generic.NewGenericController("Forge"),
+		logger:            logger.WithField("controller", "Forge"),
+		kubeClient:        kubeClient,
+		kubesmithClient:   kubesmithClient,
 		forgeLister:       forgeInformer.Lister(),
-		forgeClient:       forgeClient,
 		clock:             &clock.RealClock{},
 	}
 
@@ -28,14 +37,19 @@ func NewForgeController(forgeClient api.ForgesGetter, forgeInformer informers.Fo
 	forgeInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				key, err := cache.MetaNamespaceKeyFunc(obj)
-				if err != nil {
-					forge := obj.(*v1.Forge)
-					glog.Errorf("Error creating queue key, item not added to queue; name: %s", forge.Name)
-					return
-				}
+				forge := obj.(*v1.Forge)
 
-				c.Queue.Add(key)
+				c.Queue.Add(sync.ForgeAddAction(forge))
+			},
+			UpdateFunc: func(oldObj, updatedObj interface{}) {
+				updatedForge := updatedObj.(*v1.Forge)
+
+				c.Queue.Add(sync.ForgeUpdateAction(updatedForge))
+			},
+			DeleteFunc: func(obj interface{}) {
+				forge := obj.(*v1.Forge)
+
+				c.Queue.Add(sync.ForgeDeleteAction(forge))
 			},
 		},
 	)

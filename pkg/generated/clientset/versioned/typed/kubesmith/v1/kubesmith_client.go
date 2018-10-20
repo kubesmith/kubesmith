@@ -29,6 +29,8 @@ type KubesmithV1Interface interface {
 	RESTClient() rest.Interface
 	ForgesGetter
 	PipelinesGetter
+	PipelineJobsGetter
+	PipelineStagesGetter
 }
 
 // KubesmithV1Client is used to interact with features provided by the kubesmith.io group.
@@ -42,6 +44,14 @@ func (c *KubesmithV1Client) Forges(namespace string) ForgeInterface {
 
 func (c *KubesmithV1Client) Pipelines(namespace string) PipelineInterface {
 	return newPipelines(c, namespace)
+}
+
+func (c *KubesmithV1Client) PipelineJobs(namespace string) PipelineJobInterface {
+	return newPipelineJobs(c, namespace)
+}
+
+func (c *KubesmithV1Client) PipelineStages(namespace string) PipelineStageInterface {
+	return newPipelineStages(c, namespace)
 }
 
 // NewForConfig creates a new KubesmithV1Client for the given config.

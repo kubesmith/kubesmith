@@ -57,6 +57,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubesmith().V1().Forges().Informer()}, nil
 	case v1.SchemeGroupVersion.WithResource("pipelines"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubesmith().V1().Pipelines().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("pipelinejobs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubesmith().V1().PipelineJobs().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("pipelinestages"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Kubesmith().V1().PipelineStages().Informer()}, nil
 
 	}
 
