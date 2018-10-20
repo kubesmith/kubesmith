@@ -9,29 +9,45 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/clock"
+	appInformersv1 "k8s.io/client-go/informers/apps/v1"
+	coreInformersv1 "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
 
 func NewPipelineController(
+	maxRunningPipelines int,
 	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	pipelineInformer informers.PipelineInformer,
+	pipelineStageInformer informers.PipelineStageInformer,
+	secretInformer coreInformersv1.SecretInformer,
+	deploymentInformer appInformersv1.DeploymentInformer,
+	serviceInformer coreInformersv1.ServiceInformer,
 ) controllers.Interface {
 	c := &PipelineController{
-		GenericController: generic.NewGenericController("Pipeline"),
-		logger:            logger.WithField("controller", "Pipeline"),
-		kubeClient:        kubeClient,
-		kubesmithClient:   kubesmithClient,
-		pipelineLister:    pipelineInformer.Lister(),
-		clock:             &clock.RealClock{},
+		GenericController:   generic.NewGenericController("Pipeline"),
+		maxRunningPipelines: maxRunningPipelines,
+		logger:              logger.WithField("controller", "Pipeline"),
+		kubeClient:          kubeClient,
+		kubesmithClient:     kubesmithClient,
+		pipelineLister:      pipelineInformer.Lister(),
+		pipelineStageLister: pipelineStageInformer.Lister(),
+		secretLister:        secretInformer.Lister(),
+		deploymentLister:    deploymentInformer.Lister(),
+		serviceLister:       serviceInformer.Lister(),
+		clock:               &clock.RealClock{},
 	}
 
 	c.SyncHandler = c.processPipeline
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineInformer.Informer().HasSynced,
+		pipelineStageInformer.Informer().HasSynced,
+		secretInformer.Informer().HasSynced,
+		deploymentInformer.Informer().HasSynced,
+		serviceInformer.Informer().HasSynced,
 	)
 
 	pipelineInformer.Informer().AddEventHandler(

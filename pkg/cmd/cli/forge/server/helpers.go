@@ -80,10 +80,15 @@ func NewServer(o *Options) *Server {
 	)
 
 	pipelineController := pipeline.NewPipelineController(
+		o.MaxRunningPipelines,
 		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
+		kubesmithInformerFactory.Kubesmith().V1().PipelineStages(),
+		kubeInformerFactory.Core().V1().Secrets(),
+		kubeInformerFactory.Apps().V1().Deployments(),
+		kubeInformerFactory.Core().V1().Services(),
 	)
 
 	pipelineStageController := pipelinestage.NewPipelineStageController(

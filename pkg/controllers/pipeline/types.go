@@ -7,15 +7,22 @@ import (
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
+	appListersv1 "k8s.io/client-go/listers/apps/v1"
+	coreListersv1 "k8s.io/client-go/listers/core/v1"
 )
 
 type PipelineController struct {
 	*generic.GenericController
 
-	logger          logrus.FieldLogger
-	kubeClient      kubernetes.Interface
-	kubesmithClient kubesmithv1.KubesmithV1Interface
+	maxRunningPipelines int
+	logger              logrus.FieldLogger
+	kubeClient          kubernetes.Interface
+	kubesmithClient     kubesmithv1.KubesmithV1Interface
 
-	pipelineLister kubesmithListersv1.PipelineLister
-	clock          clock.Clock
+	pipelineLister      kubesmithListersv1.PipelineLister
+	pipelineStageLister kubesmithListersv1.PipelineStageLister
+	secretLister        coreListersv1.SecretLister
+	deploymentLister    appListersv1.DeploymentLister
+	serviceLister       coreListersv1.ServiceLister
+	clock               clock.Clock
 }
