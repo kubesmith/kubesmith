@@ -14,6 +14,15 @@ spec:
     kind: Pipeline
     categories:
     - all
+  additionalPrinterColumns:
+  - name: Phase
+    type: string
+    description: The current phase of the pipeline
+    JSONPath: .status.phase
+  - name: Stage
+    type: integer
+    description: The current stage of the pipeline
+    JSONPath: .status.stageIndex
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -30,6 +39,11 @@ spec:
     kind: PipelineStage
     categories:
     - all
+  additionalPrinterColumns:
+  - name: Phase
+    type: string
+    description: The current phase of the pipeline
+    JSONPath: .status.phase
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
@@ -46,6 +60,11 @@ spec:
     kind: PipelineJob
     categories:
     - all
+  additionalPrinterColumns:
+  - name: Phase
+    type: string
+    description: The current phase of the pipeline
+    JSONPath: .status.phase
 ---
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
