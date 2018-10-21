@@ -334,6 +334,23 @@ func (p *Pipeline) GetExpandedJobs() []PipelineJobSpec {
 	return expandedJobs
 }
 
+func (p *Pipeline) GetExpandedJobsForCurrentStage() []PipelineJobSpec {
+	expanded := []PipelineJobSpec{}
+	stageName := strings.ToLower(p.GetCurrentStageName())
+
+	if stageName == "" {
+		return expanded
+	}
+
+	for _, oldJob := range p.GetJobs() {
+		if strings.ToLower(oldJob.Stage) == stageName {
+			expanded = append(expanded, p.expandJob(oldJob))
+		}
+	}
+
+	return expanded
+}
+
 func (p *Pipeline) AdvanceCurrentStage() {
 	stageIndex := p.GetStageIndex() + 1
 

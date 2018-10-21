@@ -126,6 +126,11 @@ func (p *PipelineStage) GetPatchFromOriginal(original PipelineStage) (types.Patc
 }
 
 func (p *PipelineStage) Validate() error {
-	// todo: finish this validation
+	for _, job := range p.GetJobs() {
+		if err := job.Validate(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

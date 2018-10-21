@@ -134,6 +134,10 @@ func (c *PipelineController) processRunningPipeline(original api.Pipeline, logge
 		return errors.Wrap(err, "could not ensure repo artifact exists")
 	}
 
+	if err := c.ensureCurrentPipelineStageIsScheduled(original, logger); err != nil {
+		return errors.Wrap(err, "could not ensure current pipeline stage was scheduled")
+	}
+
 	return nil
 }
 
@@ -155,7 +159,7 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 
 	// create a selector for listing resources associated to pipeline jobs
 	logger.Info("creating label selector for associated resources")
-	labelSelector, err := c.getResourceLabelSelector(c.getPipelineLabels(original))
+	labelSelector, err := c.getResourceLabelSelector(c.getWrappedPipelineLabels(original))
 	if err != nil {
 		return errors.Wrap(err, "could not create label selector for pipeline")
 	}
@@ -249,7 +253,7 @@ func (c *PipelineController) canRunAnotherPipeline(original api.Pipeline) (bool,
 	return false, nil
 }
 
-func (c *PipelineController) getPipelineLabels(pipeline api.Pipeline) map[string]string {
+func (c *PipelineController) getWrappedPipelineLabels(pipeline api.Pipeline) map[string]string {
 	labels := pipeline.GetResourceLabels()
 	labels["Controller"] = "Pipeline"
 
@@ -257,12 +261,12 @@ func (c *PipelineController) getPipelineLabels(pipeline api.Pipeline) map[string
 }
 
 func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, logger logrus.FieldLogger) (*minio.MinioServer, error) {
-	logger.Info("scheduling minio...")
+	logger.Info("ensuring minio is scheduled")
 	minioServer := minio.NewMinioServer(
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		c.getPipelineLabels(original),
+		c.getWrappedPipelineLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,
@@ -353,7 +357,7 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 				host,
 				minioServer.GetPort(),
 				minioServer.GetResourceName(),
-				c.getPipelineLabels(original),
+				c.getWrappedPipelineLabels(original),
 			)
 
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
@@ -392,7 +396,7 @@ func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		c.getPipelineLabels(original),
+		c.getWrappedPipelineLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,
@@ -404,5 +408,34 @@ func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline
 	}
 
 	logger.Info("cleaned up minio server resources")
+	return nil
+}
+
+func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("ensuring pipeline stage is scheduled")
+	name := fmt.Sprintf("%s-stage-%d", original.GetResourcePrefix(), original.GetStageIndex())
+
+	if _, err := c.pipelineStageLister.PipelineStages(original.GetNamespace()).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("pipeline stage was not found; scheduling...")
+
+			pipelineStage := GetPipelineStage(
+				name,
+				c.getWrappedPipelineLabels(original),
+				original.GetExpandedJobsForCurrentStage(),
+			)
+
+			if _, err := c.kubesmithClient.PipelineStages(original.GetNamespace()).Create(&pipelineStage); err != nil {
+				return errors.Wrap(err, "could not schedule pipeline job")
+			}
+
+			logger.Info("pipeline stage is scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get pipeline stage")
+	}
+
+	logger.Info("pipeline stage is scheduled")
 	return nil
 }
