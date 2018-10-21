@@ -7,14 +7,10 @@ metadata:
     component: kubesmith
 spec:
   group: kubesmith.io
-  versions:
-  - name: v1
-    served: true
-    storage: true
+  version: v1
   scope: Namespaced
   names:
     plural: pipelines
-    singular: pipeline
     kind: Pipeline
     categories:
     - all
@@ -27,14 +23,10 @@ metadata:
     component: kubesmith
 spec:
   group: kubesmith.io
-  versions:
-  - name: v1
-    served: true
-    storage: true
+  version: v1
   scope: Namespaced
   names:
     plural: pipelinestages
-    singular: pipelinestage
     kind: PipelineStage
     categories:
     - all
@@ -47,14 +39,10 @@ metadata:
     component: kubesmith
 spec:
   group: kubesmith.io
-  versions:
-  - name: v1
-    served: true
-    storage: true
+  version: v1
   scope: Namespaced
   names:
     plural: pipelinejobs
-    singular: pipelinejob
     kind: PipelineJob
     categories:
     - all
@@ -67,14 +55,10 @@ metadata:
     component: kubesmith
 spec:
   group: kubesmith.io
-  versions:
-  - name: v1
-    served: true
-    storage: true
+  version: v1
   scope: Namespaced
   names:
     plural: forges
-    singular: forge
     kind: Forge
     categories:
     - all

@@ -426,7 +426,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 			)
 
 			if _, err := c.kubesmithClient.PipelineStages(original.GetNamespace()).Create(&pipelineStage); err != nil {
-				return errors.Wrap(err, "could not schedule pipeline job")
+				return errors.Wrap(err, "could not schedule pipeline stage")
 			}
 
 			logger.Info("pipeline stage is scheduled")

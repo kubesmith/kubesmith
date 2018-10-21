@@ -46,8 +46,10 @@ func newTypeInfo(pluralName string, itemType, itemListType runtime.Object) typeI
 // API group, keyed on Kind.
 func CustomResources() map[string]typeInfo {
 	return map[string]typeInfo{
-		"Forge":    newTypeInfo("forges", &Forge{}, &ForgeList{}),
-		"Pipeline": newTypeInfo("pipelines", &Pipeline{}, &PipelineList{}),
+		"Forge":         newTypeInfo("forges", &Forge{}, &ForgeList{}),
+		"Pipeline":      newTypeInfo("pipelines", &Pipeline{}, &PipelineList{}),
+		"PipelineStage": newTypeInfo("pipelinestages", &PipelineStage{}, &PipelineStageList{}),
+		"PipelineJob":   newTypeInfo("pipelinejobs", &PipelineJob{}, &PipelineJobList{}),
 	}
 }
 

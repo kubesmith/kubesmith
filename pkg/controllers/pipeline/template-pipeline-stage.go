@@ -13,7 +13,7 @@ func GetPipelineStage(
 	return api.PipelineStage{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: api.SchemeGroupVersion.String(),
-			Kind:       "pipelinestage",
+			Kind:       "PipelineStage",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,

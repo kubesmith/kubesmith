@@ -1,6 +1,7 @@
 package pipelinestage
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
@@ -47,9 +48,17 @@ func NewPipelineStageController(
 				c.Queue.Add(sync.PipelineStageUpdateAction(*updatedStage))
 			},
 			DeleteFunc: func(obj interface{}) {
-				stage := obj.(*v1.PipelineStage)
-
-				c.Queue.Add(sync.PipelineStageDeleteAction(*stage))
+				switch obj.(type) {
+				case cache.DeletedFinalStateUnknown:
+					stage := obj.(cache.DeletedFinalStateUnknown).Obj.(*v1.PipelineStage)
+					c.Queue.Add(sync.PipelineStageDeleteAction(*stage))
+				case *v1.PipelineStage:
+					stage := obj.(*v1.PipelineStage)
+					c.Queue.Add(sync.PipelineStageDeleteAction(*stage))
+				default:
+					c.logger.Info("ignoring deleted object; unknown")
+					spew.Dump(obj)
+				}
 			},
 		},
 	)
