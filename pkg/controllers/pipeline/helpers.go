@@ -62,9 +62,22 @@ func NewPipelineController(
 				c.Queue.Add(sync.PipelineAddAction(*pipeline))
 			},
 			UpdateFunc: func(oldObj, updatedObj interface{}) {
+				oldPipeline := oldObj.(*v1.Pipeline)
 				updatedPipeline := updatedObj.(*v1.Pipeline)
 
-				c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
+				logger := c.logger.WithFields(logrus.Fields{
+					"Name":       updatedPipeline.GetName(),
+					"Phase":      updatedPipeline.GetPhase(),
+					"StageIndex": updatedPipeline.GetStageIndex(),
+				})
+
+				if updatedPipeline.GetPhase() != oldPipeline.GetPhase() {
+					logger.Info("queueing pipeline: phase changed")
+					c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
+				} else if updatedPipeline.IsRunning() && (updatedPipeline.GetStageIndex() != oldPipeline.GetStageIndex()) {
+					logger.Info("queueing pipeline; stage index advanced")
+					c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
+				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				pipeline := obj.(*v1.Pipeline)
