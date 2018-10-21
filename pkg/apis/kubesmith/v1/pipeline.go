@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"regexp"
 	"strings"
 	"time"
 
@@ -251,6 +252,88 @@ func (p *Pipeline) GetPatchFromOriginal(original Pipeline) (types.PatchType, []b
 	return types.MergePatchType, patchBytes, nil
 }
 
+func (p *Pipeline) expandJob(oldJob PipelineJobSpec) PipelineJobSpec {
+	job := *oldJob.DeepCopy()
+	env := map[string]string{}
+	artifacts := []PipelineJobArtifact{}
+
+	for key, value := range p.GetEnvironment() {
+		env[key] = value
+	}
+
+	for _, templateName := range job.Extends {
+		template, _ := p.GetTemplateByName(templateName)
+		if template == nil {
+			continue
+		}
+
+		if template.Image != "" {
+			job.Image = template.Image
+		}
+
+		for key, value := range template.Environment {
+			env[key] = value
+		}
+
+		if len(oldJob.Command) == 0 && len(template.Command) > 0 {
+			job.Command = []string{}
+
+			for _, value := range template.Command {
+				job.Command = append(job.Command, value)
+			}
+		}
+
+		if len(oldJob.Args) == 0 && len(template.Args) > 0 {
+			job.Args = []string{}
+
+			for _, value := range template.Args {
+				job.Args = append(job.Args, value)
+			}
+		}
+
+		if len(oldJob.ConfigMapData) == 0 && len(template.ConfigMapData) > 0 {
+			for key, value := range template.ConfigMapData {
+				job.ConfigMapData[key] = value
+			}
+		}
+
+		for _, artifact := range template.Artifacts {
+			artifacts = append(artifacts, artifact)
+		}
+
+		if len(template.OnlyOn) > 0 {
+			job.OnlyOn = template.OnlyOn
+		}
+	}
+
+	for key, value := range oldJob.Environment {
+		env[key] = value
+	}
+
+	for _, artifact := range oldJob.Artifacts {
+		artifacts = append(artifacts, artifact)
+	}
+
+	job.Environment = env
+	job.Artifacts = artifacts
+
+	if len(oldJob.OnlyOn) > 0 {
+		job.OnlyOn = oldJob.OnlyOn
+	}
+
+	return job
+}
+
+func (p *Pipeline) GetExpandedJobs() []PipelineJobSpec {
+	expandedJobs := []PipelineJobSpec{}
+
+	for _, oldJob := range p.GetJobs() {
+		expandedJobs = append(expandedJobs, p.expandJob(oldJob))
+	}
+
+	return expandedJobs
+}
+
 func (p *Pipeline) AdvanceCurrentStage() {
 	stageIndex := p.GetStageIndex() + 1
 
@@ -262,7 +345,103 @@ func (p *Pipeline) AdvanceCurrentStage() {
 	p.Status.StageIndex = stageIndex
 }
 
-func (p *Pipeline) Validate() error {
-	// todo: finish this validation
+func (p *Pipeline) ValidateWorkspace() error {
+	validGitURL := regexp.MustCompile(`(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$`)
+	if !validGitURL.MatchString(p.GetWorkspaceRepoURL()) {
+		return errors.New("workspace repo url must be a valid git url")
+	}
+
+	if p.GetWorkspaceSSHSecretName() == "" {
+		return errors.New("workspace ssh secret name must be specified")
+	}
+
+	if p.GetWorkspaceSSHSecretKey() == "" {
+		return errors.New("workspace ssh secret key must be specified")
+	}
+
 	return nil
+}
+
+func (p *Pipeline) ValidateStages() error {
+	stages := p.GetStages()
+	jobs := p.GetJobs()
+
+	if len(stages) == 0 {
+		return errors.New("pipeline must have at least 1 stage specified")
+	}
+
+	for _, stage := range stages {
+		stage = strings.ToLower(stage)
+		hasJobs := false
+
+		for _, job := range jobs {
+			if stage == strings.ToLower(job.Stage) {
+				hasJobs = true
+				break
+			}
+		}
+
+		if !hasJobs {
+			return errors.New("each stage must have at least 1 job specified")
+		}
+	}
+
+	return nil
+}
+
+func (p *Pipeline) ValidateJobs() error {
+	// first, validate some basic properties of the jobs
+	for _, job := range p.GetJobs() {
+		// check that the stage exists
+		jobStage := strings.ToLower(job.Stage)
+		foundStage := false
+		for _, stage := range p.GetStages() {
+			if jobStage == strings.ToLower(stage) {
+				foundStage = true
+				break
+			}
+		}
+
+		if !foundStage {
+			return errors.New("job stage must be specified as a valid stage")
+		}
+
+		// check that all extends exist
+		for _, extend := range job.Extends {
+			foundExtend := false
+			extend = strings.ToLower(extend)
+
+			for _, extension := range p.GetTemplates() {
+				if extend == strings.ToLower(extension.Name) {
+					foundExtend = true
+					break
+				}
+			}
+
+			if !foundExtend {
+				return errors.New("invalid job extension specified")
+			}
+		}
+	}
+
+	// now, get the expanded jobs and validate each of them
+	for _, job := range p.GetExpandedJobs() {
+		if err := job.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (p *Pipeline) Validate() error {
+	if err := p.ValidateWorkspace(); err != nil {
+		return err
+	}
+
+	if err := p.ValidateStages(); err != nil {
+		return err
+	}
+
+	return p.ValidateJobs()
 }

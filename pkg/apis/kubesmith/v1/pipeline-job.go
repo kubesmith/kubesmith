@@ -159,7 +159,29 @@ func (p *PipelineJob) GetPatchFromOriginal(original PipelineJob) (types.PatchTyp
 	return types.MergePatchType, patchBytes, nil
 }
 
-func (p *PipelineJob) Validate() error {
-	// todo: finish this validation
+func (p *PipelineJobSpec) Validate() error {
+	if p.Name == "" {
+		return errors.New("job name must not be empty")
+	}
+
+	if p.Image == "" {
+		return errors.New("job image must not be empty")
+	}
+
+	if p.Stage == "" {
+		return errors.New("job stage must be specified")
+	}
+
+	hasCommands := len(p.Command) > 0 || len(p.Args) > 0
+	hasRunner := len(p.Runner) > 0
+
+	if hasCommands && hasRunner {
+		return errors.New("job must have either command/args or runner specified; not both")
+	}
+
 	return nil
+}
+
+func (p *PipelineJob) Validate() error {
+	return p.Spec.Validate()
 }
