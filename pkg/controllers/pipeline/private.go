@@ -110,7 +110,7 @@ func (c *PipelineController) processQueuedPipeline(original api.Pipeline, logger
 	}
 
 	if !canRunAnotherPipeline {
-		logger.Warn("cannot run another pipeline")
+		logger.Info("cannot run another pipeline")
 		return nil
 	}
 

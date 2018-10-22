@@ -73,7 +73,7 @@ type PipelineJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []PipelineStage `json:"items"`
+	Items []PipelineJob `json:"items"`
 }
 
 // helpers

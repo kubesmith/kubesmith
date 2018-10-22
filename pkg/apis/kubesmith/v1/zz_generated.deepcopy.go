@@ -202,7 +202,7 @@ func (in *PipelineJobList) DeepCopyInto(out *PipelineJobList) {
 	out.ListMeta = in.ListMeta
 	if in.Items != nil {
 		in, out := &in.Items, &out.Items
-		*out = make([]PipelineStage, len(*in))
+		*out = make([]PipelineJob, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
