@@ -19,6 +19,7 @@ func NewPipelineStageController(
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	pipelineStageInformer informers.PipelineStageInformer,
+	pipelineJobInformer informers.PipelineJobInformer,
 ) controllers.Interface {
 	c := &PipelineStageController{
 		GenericController:   generic.NewGenericController("PipelineStage"),
@@ -26,6 +27,7 @@ func NewPipelineStageController(
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
 		pipelineStageLister: pipelineStageInformer.Lister(),
+		pipelineJobLister:   pipelineJobInformer.Lister(),
 		clock:               &clock.RealClock{},
 	}
 
@@ -33,6 +35,7 @@ func NewPipelineStageController(
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineStageInformer.Informer().HasSynced,
+		pipelineJobInformer.Informer().HasSynced,
 	)
 
 	pipelineStageInformer.Informer().AddEventHandler(

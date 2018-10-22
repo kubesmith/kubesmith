@@ -17,5 +17,6 @@ type PipelineStageController struct {
 	kubesmithClient kubesmithv1.KubesmithV1Interface
 
 	pipelineStageLister kubesmithListersv1.PipelineStageLister
+	pipelineJobLister   kubesmithListersv1.PipelineJobLister
 	clock               clock.Clock
 }

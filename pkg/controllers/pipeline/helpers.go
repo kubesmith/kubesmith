@@ -1,6 +1,7 @@
 package pipeline
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
@@ -81,6 +82,18 @@ func NewPipelineController(
 			},
 			DeleteFunc: func(obj interface{}) {
 				pipeline := obj.(*v1.Pipeline)
+
+				switch obj.(type) {
+				case cache.DeletedFinalStateUnknown:
+					pipeline := obj.(cache.DeletedFinalStateUnknown).Obj.(*v1.Pipeline)
+					c.Queue.Add(sync.PipelineDeleteAction(*pipeline))
+				case *v1.Pipeline:
+					pipeline := obj.(*v1.Pipeline)
+					c.Queue.Add(sync.PipelineDeleteAction(*pipeline))
+				default:
+					c.logger.Info("ignoring deleted object; unknown")
+					spew.Dump(obj)
+				}
 
 				c.Queue.Add(sync.PipelineDeleteAction(*pipeline))
 			},

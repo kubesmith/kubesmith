@@ -1,6 +1,8 @@
 package pipelinestage
 
 import (
+	"fmt"
+
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
@@ -87,7 +89,26 @@ func (c *PipelineStageController) processEmptyPhasePipelineStage(original api.Pi
 }
 
 func (c *PipelineStageController) processRunningPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing running pipeline stage")
+	for index, job := range original.GetJobs() {
+		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
+
+		logger.Info("ensuring job is scheduled")
+		err := c.ensureJobIsScheduled(
+			name,
+			original.GetNamespace(),
+			c.getWrappedLabels(original),
+			job,
+			logger,
+		)
+
+		if err != nil {
+			return errors.Wrap(err, "could not ensure job was scheduled")
+		}
+
+		logger.Info("job is scheduled")
+	}
+
+	logger.Info("all pipeline jobs are scheduled")
 	return nil
 }
 
@@ -113,4 +134,36 @@ func (c *PipelineStageController) patchPipelineStage(updated, original api.Pipel
 	}
 
 	return c.kubesmithClient.PipelineStages(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
+}
+
+func (c *PipelineStageController) getWrappedLabels(original api.PipelineStage) map[string]string {
+	labels := original.GetLabels()
+	labels["Controller"] = "PipelineStage"
+
+	return labels
+}
+
+func (c *PipelineStageController) ensureJobIsScheduled(name, namespace string, labels map[string]string, job api.PipelineJobSpec, logger logrus.FieldLogger) error {
+	if _, err := c.pipelineJobLister.PipelineJobs(namespace).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("pipeline job does not exist; scheduling")
+
+			job := GetPipelineJob(name, labels, job)
+			if _, err := c.kubesmithClient.PipelineJobs(namespace).Create(&job); err != nil {
+				return errors.Wrap(err, "could not schedule pipeline job")
+			}
+
+			logger.Info("pipeline job was scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get pipeline stage")
+	}
+
+	logger.Info("pipeline job is scheduled")
+	return nil
+}
+
+func (c *PipelineStageController) cleanupJob(name string) error {
+	return nil
 }

@@ -159,7 +159,7 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 
 	// create a selector for listing resources associated to pipeline jobs
 	logger.Info("creating label selector for associated resources")
-	labelSelector, err := c.getResourceLabelSelector(c.getWrappedPipelineLabels(original))
+	labelSelector, err := c.getResourceLabelSelector(c.getWrappedLabels(original))
 	if err != nil {
 		return errors.Wrap(err, "could not create label selector for pipeline")
 	}
@@ -253,7 +253,7 @@ func (c *PipelineController) canRunAnotherPipeline(original api.Pipeline) (bool,
 	return false, nil
 }
 
-func (c *PipelineController) getWrappedPipelineLabels(pipeline api.Pipeline) map[string]string {
+func (c *PipelineController) getWrappedLabels(pipeline api.Pipeline) map[string]string {
 	labels := pipeline.GetResourceLabels()
 	labels["Controller"] = "Pipeline"
 
@@ -266,7 +266,7 @@ func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, l
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		c.getWrappedPipelineLabels(original),
+		c.getWrappedLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,
@@ -357,7 +357,7 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 				host,
 				minioServer.GetPort(),
 				minioServer.GetResourceName(),
-				c.getWrappedPipelineLabels(original),
+				c.getWrappedLabels(original),
 			)
 
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
@@ -396,7 +396,7 @@ func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline
 		original.GetNamespace(),
 		original.GetResourcePrefix(),
 		logger,
-		c.getWrappedPipelineLabels(original),
+		c.getWrappedLabels(original),
 		c.kubeClient,
 		c.secretLister,
 		c.deploymentLister,
@@ -421,7 +421,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 
 			pipelineStage := GetPipelineStage(
 				name,
-				c.getWrappedPipelineLabels(original),
+				c.getWrappedLabels(original),
 				original.GetExpandedJobsForCurrentStage(),
 			)
 
