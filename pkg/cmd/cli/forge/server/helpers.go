@@ -101,10 +101,13 @@ func NewServer(o *Options) *Server {
 	)
 
 	pipelineJobController := pipelinejob.NewPipelineJobController(
+		o.MaxRunningPipelineJobs,
 		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		kubesmithInformerFactory.Kubesmith().V1().PipelineJobs(),
+		kubeInformerFactory.Core().V1().ConfigMaps(),
+		kubeInformerFactory.Batch().V1().Jobs(),
 	)
 
 	jobController := job.NewJobController(

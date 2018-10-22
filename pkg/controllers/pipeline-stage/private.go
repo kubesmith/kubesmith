@@ -92,7 +92,7 @@ func (c *PipelineStageController) processRunningPipelineStage(original api.Pipel
 	for index, job := range original.GetJobs() {
 		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
 
-		logger.Info("ensuring job is scheduled")
+		logger.Info("ensuring pipeline job is scheduled")
 		err := c.ensureJobIsScheduled(
 			name,
 			original.GetNamespace(),
@@ -102,10 +102,10 @@ func (c *PipelineStageController) processRunningPipelineStage(original api.Pipel
 		)
 
 		if err != nil {
-			return errors.Wrap(err, "could not ensure job was scheduled")
+			return errors.Wrap(err, "could not ensure pipeline job was scheduled")
 		}
 
-		logger.Info("job is scheduled")
+		logger.Info("pipeline job is scheduled")
 	}
 
 	logger.Info("all pipeline jobs are scheduled")

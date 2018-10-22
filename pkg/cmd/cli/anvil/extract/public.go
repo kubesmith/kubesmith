@@ -11,6 +11,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
 	"github.com/kubesmith/kubesmith/pkg/s3"
+	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -50,7 +51,7 @@ func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) er
 		if err != nil {
 			return err
 		} else if !exists {
-			glog.Exitf("Remote file s3://%s/%s does not exist", o.S3.BucketName, file)
+			return errors.Errorf("Remote file s3://%s/%s does not exist", o.S3.BucketName, file)
 		} else {
 			glog.V(1).Infof("Found s3://%s/%s", o.S3.BucketName, file)
 		}

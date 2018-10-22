@@ -2,6 +2,7 @@ package v1
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	jsonpatch "github.com/evanphx/json-patch"
@@ -96,6 +97,62 @@ func (p *PipelineJob) GetEndTime() metav1.Time {
 
 func (p *PipelineJob) GetPhase() Phase {
 	return p.Status.Phase
+}
+
+func (p *PipelineJob) GetJobName() string {
+	return p.Spec.Name
+}
+
+func (p *PipelineJob) GetImage() string {
+	return p.Spec.Image
+}
+
+func (p *PipelineJob) GetStage() string {
+	return p.Spec.Stage
+}
+
+func (p *PipelineJob) GetExtends() []string {
+	return p.Spec.Extends
+}
+
+func (p *PipelineJob) GetEnvironment() map[string]string {
+	return p.Spec.Environment
+}
+
+func (p *PipelineJob) GetCommand() []string {
+	if len(p.Spec.Command) > 0 {
+		return p.Spec.Command
+	}
+
+	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
+}
+
+func (p *PipelineJob) GetArgs() []string {
+	return p.Spec.Args
+}
+
+func (p *PipelineJob) GetConfigMapData() map[string]string {
+	if len(p.Spec.ConfigMapData) > 0 {
+		return p.Spec.ConfigMapData
+	}
+
+	return map[string]string{"pipeline-script.sh": strings.Join(p.GetRunner(), "\n")}
+}
+
+func (p *PipelineJob) GetRunner() []string {
+	return p.Spec.Runner
+}
+
+func (p *PipelineJob) IsAllowedToFail() bool {
+	return p.Spec.AllowFailure == true
+}
+
+func (p *PipelineJob) GetArtifacts() []PipelineJobArtifact {
+	return p.Spec.Artifacts
+}
+
+func (p *PipelineJob) GetOnlyOn() []string {
+	return p.Spec.OnlyOn
 }
 
 func (p *PipelineJob) HasNoPhase() bool {

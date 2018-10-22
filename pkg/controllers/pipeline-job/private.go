@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
@@ -91,12 +92,46 @@ func (c *PipelineJobController) processEmptyPhasePipelineJob(original api.Pipeli
 }
 
 func (c *PipelineJobController) processQueuedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing queued pipeline job")
+	job := *original.DeepCopy()
+
+	logger.Info("checking if another pipeline job can be run")
+	canRunAnotherPipelineJob, err := c.canRunAnotherPipelineJob(job)
+	if err != nil {
+		return errors.Wrap(err, "could not check if another pipeline job could be run")
+	}
+
+	if !canRunAnotherPipelineJob {
+		logger.Info("cannot run another pipeline job")
+		return nil
+	}
+
+	logger.Info("marking as running")
+	job.SetPhaseToRunning()
+	if _, err := c.patchPipelineJob(job, original); err != nil {
+		return errors.Wrap(err, "could not mark as running")
+	}
+
+	logger.Info("marked as running")
 	return nil
 }
 
 func (c *PipelineJobController) processRunningPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing running pipeline job")
+	err := c.ensureJobConfigMapIsScheduled(
+		original.GetName(),
+		original.GetNamespace(),
+		c.getWrappedLabels(original),
+		original.GetConfigMapData(),
+		logger,
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "could not ensure job configmap is scheduled")
+	}
+
+	if err := c.ensureJobIsScheduled(original, logger); err != nil {
+		return errors.Wrap(err, "could not ensure job is scheduled")
+	}
+
 	return nil
 }
 
@@ -122,4 +157,62 @@ func (c *PipelineJobController) patchPipelineJob(updated, original api.PipelineJ
 	}
 
 	return c.kubesmithClient.PipelineJobs(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
+}
+
+func (c *PipelineJobController) canRunAnotherPipelineJob(original api.PipelineJob) (bool, error) {
+	jobs, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).List(labels.Everything())
+	if err != nil {
+		return false, errors.Wrap(err, "could not list pipeline jobs")
+	}
+
+	currentlyRunning := 0
+	for _, job := range jobs {
+		if job.IsRunning() {
+			currentlyRunning++
+		}
+	}
+
+	if currentlyRunning < c.maxRunningPipelineJobs {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+func (c *PipelineJobController) ensureJobConfigMapIsScheduled(name, namespace string, labels, configMapData map[string]string, logger logrus.FieldLogger) error {
+	logger.Info("ensuring job configmap is scheduled")
+	if _, err := c.configMapLister.ConfigMaps(namespace).Get(name); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("job configmap does not exist; scheduling")
+
+			configMap := GetJobConfigMap(name, labels, configMapData)
+			if _, err := c.kubeClient.CoreV1().ConfigMaps(namespace).Create(&configMap); err != nil {
+				return errors.Wrap(err, "could not schedule job configmap")
+			}
+
+			logger.Info("job configmap was scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get job configmap")
+	}
+
+	logger.Info("job configmap is scheduled")
+	return nil
+}
+
+func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, logger logrus.FieldLogger) error {
+	logger.Info("ensuring job is scheduled")
+
+	logger.Info("job is scheduled")
+	return nil
+}
+
+func (c *PipelineJobController) getWrappedLabels(original api.PipelineJob) map[string]string {
+	labels := original.GetLabels()
+	labels["Controller"] = "PipelineJob"
+	labels["PipelineJobName"] = original.GetName()
+	labels["PipelineJobNamespace"] = original.GetNamespace()
+
+	return labels
 }

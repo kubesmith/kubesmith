@@ -81,8 +81,6 @@ func NewPipelineController(
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				pipeline := obj.(*v1.Pipeline)
-
 				switch obj.(type) {
 				case cache.DeletedFinalStateUnknown:
 					pipeline := obj.(cache.DeletedFinalStateUnknown).Obj.(*v1.Pipeline)
@@ -94,8 +92,6 @@ func NewPipelineController(
 					c.logger.Info("ignoring deleted object; unknown")
 					spew.Dump(obj)
 				}
-
-				c.Queue.Add(sync.PipelineDeleteAction(*pipeline))
 			},
 		},
 	)
