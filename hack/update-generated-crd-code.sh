@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# redo this script to use docker so things are sandboxed (as opposed to just trampling all over host)
+
 # setup a few helper variables
 ROOT="github.com/kubesmith/kubesmith"
 VERSION="kubernetes-1.11.0"
