@@ -125,12 +125,38 @@ func (c *PipelineController) processQueuedPipeline(original api.Pipeline, logger
 }
 
 func (c *PipelineController) processRunningPipeline(original api.Pipeline, logger logrus.FieldLogger) error {
-	minioServer, err := c.ensureMinioServerIsRunning(original, logger)
-	if err != nil {
-		return errors.Wrap(err, "could not ensure minio server is running")
+	if c.pipelineNeedsMinio(original) == true {
+		minioServer, err := c.ensureMinioServerIsRunning(original, logger)
+		if err != nil {
+			return errors.Wrap(err, "could not ensure minio server is running")
+		}
+
+		logger.Info("updating pipeline with minio storage configuration")
+		pipeline := *original.DeepCopy()
+
+		host, err := minioServer.GetServiceHost()
+		if err != nil {
+			return errors.Wrap(err, "could not get minio service host")
+		}
+
+		pipeline.Spec.Workspace.Storage.S3.Host = host
+		pipeline.Spec.Workspace.Storage.S3.Port = minio.MINIO_DEFAULT_PORT
+		pipeline.Spec.Workspace.Storage.S3.UseSSL = false
+		pipeline.Spec.Workspace.Storage.S3.BucketName = minioServer.GetBucketName()
+		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.Name = minioServer.GetResourceName()
+		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey = minio.MINIO_DEFAULT_ACCESS_KEY_KEY
+		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.SecretKeyKey = minio.MINIO_DEFAULT_SECRET_KEY_KEY
+
+		updated, err := c.patchPipeline(pipeline, original)
+		if err != nil {
+			return errors.Wrap(err, "could not update pipeline with minio storage configuration")
+		}
+
+		original = *updated.DeepCopy()
+		logger.Info("updated pipeline with minio storage configuration")
 	}
 
-	if err := c.ensureRepoArtifactExists(original, minioServer, logger); err != nil {
+	if err := c.ensureRepoArtifactExists(original, logger); err != nil {
 		return errors.Wrap(err, "could not ensure repo artifact exists")
 	}
 
@@ -293,10 +319,25 @@ func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, l
 	return minioServer, nil
 }
 
-func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
-	s3Client, err := minioServer.GetS3Client()
+func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("fetching secret data")
+	secret, err := c.secretLister.Secrets(original.GetNamespace()).Get(original.Spec.Workspace.Storage.S3.Credentials.Secret.Name)
 	if err != nil {
-		return errors.Wrap(err, "could not get s3 client")
+		return errors.Wrap(err, "could not fetch secret information")
+	}
+	logger.Info("fetched secret data")
+
+	s3Client, err := s3.NewS3Client(
+		// original.Spec.Workspace.Storage.S3.Host,
+		"127.0.0.1",
+		original.Spec.Workspace.Storage.S3.Port,
+		string(secret.Data[original.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey]),
+		string(secret.Data[original.Spec.Workspace.Storage.S3.Credentials.Secret.SecretKeyKey]),
+		false,
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "could not create an s3 client")
 	}
 
 	logger.Info("checking for repo artifact")
@@ -309,7 +350,7 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, min
 	}
 
 	logger.Info("repo artifact does not exist")
-	if err := c.ensureRepoArtifactJobIsScheduled(original, minioServer, logger); err != nil {
+	if err := c.ensureRepoArtifactJobIsScheduled(original, logger); err != nil {
 		return err
 	}
 
@@ -318,7 +359,7 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, min
 	defer cancelFunc()
 
 	repoArtifactCreated := make(chan bool, 1)
-	go c.waitForRepoArtifactToBeCreated(ctx, 5, s3Client, repoArtifactCreated)
+	go c.waitForRepoArtifactToBeCreated(ctx, 5, original.Spec.Workspace.Storage.S3.BucketName, s3Client, repoArtifactCreated)
 
 	if exists := <-repoArtifactCreated; !exists {
 		logger.Info("repo artifact was not created; requeueing pipeline")
@@ -335,7 +376,7 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, min
 	return nil
 }
 
-func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipeline, minioServer *minio.MinioServer, logger logrus.FieldLogger) error {
+func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipeline, logger logrus.FieldLogger) error {
 	name := fmt.Sprintf("%s-clone-repo", original.GetResourcePrefix())
 
 	// check to see if the job already exists
@@ -344,19 +385,10 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 		if apierrors.IsNotFound(err) {
 			logger.Info("clone repo job was not found; scheduling...")
 
-			host, err := minioServer.GetServiceHost()
-			if err != nil {
-				return err
-			}
-
 			job := GetRepoCloneJob(
 				name,
-				original.Spec.Workspace.Repo.SSH.Secret.Name,
-				original.Spec.Workspace.Repo.SSH.Secret.Key,
-				original.Spec.Workspace.Repo.URL,
-				host,
-				minioServer.GetPort(),
-				minioServer.GetResourceName(),
+				original.Spec.Workspace.Repo,
+				original.Spec.Workspace.Storage.S3,
 				c.getWrappedLabels(original),
 			)
 
@@ -375,13 +407,13 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 	return nil
 }
 
-func (c *PipelineController) waitForRepoArtifactToBeCreated(ctx context.Context, secondsInterval int, s3Client *s3.S3Client, repoArtifactCreated chan bool) {
+func (c *PipelineController) waitForRepoArtifactToBeCreated(ctx context.Context, secondsInterval int, bucketName string, s3Client *s3.S3Client, repoArtifactCreated chan bool) {
 	for {
 		select {
 		case <-ctx.Done():
 			repoArtifactCreated <- false
 		default:
-			if exists, _ := s3Client.FileExists("workspace", "repo.tar.gz"); exists {
+			if exists, _ := s3Client.FileExists(bucketName, "repo.tar.gz"); exists {
 				repoArtifactCreated <- true
 			}
 		}
@@ -421,6 +453,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 
 			pipelineStage := GetPipelineStage(
 				name,
+				original.Spec.Workspace.Storage,
 				c.getWrappedLabels(original),
 				original.GetExpandedJobsForCurrentStage(),
 			)
@@ -438,4 +471,24 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 
 	logger.Info("pipeline stage is scheduled")
 	return nil
+}
+
+func (c *PipelineController) pipelineNeedsMinio(original api.Pipeline) bool {
+	s3 := original.Spec.Workspace.Storage.S3
+
+	if s3.Host == "" {
+		return true
+	} else if s3.Port == 0 {
+		return true
+	} else if s3.BucketName == "" {
+		return true
+	} else if s3.Credentials.Secret.Name == "" {
+		return true
+	} else if s3.Credentials.Secret.AccessKeyKey == "" {
+		return true
+	} else if s3.Credentials.Secret.SecretKeyKey == "" {
+		return true
+	}
+
+	return false
 }

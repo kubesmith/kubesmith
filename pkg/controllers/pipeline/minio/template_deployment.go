@@ -42,7 +42,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: "access-key",
+											Key: MINIO_DEFAULT_ACCESS_KEY_KEY,
 										},
 									},
 								},
@@ -53,7 +53,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: "secret-key",
+											Key: MINIO_DEFAULT_SECRET_KEY_KEY,
 										},
 									},
 								},
@@ -61,7 +61,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 							Ports: []corev1.ContainerPort{
 								{
 									Protocol:      corev1.ProtocolTCP,
-									ContainerPort: MINIO_PORT,
+									ContainerPort: MINIO_DEFAULT_PORT,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

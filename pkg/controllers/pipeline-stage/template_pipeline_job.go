@@ -8,7 +8,8 @@ import (
 func GetPipelineJob(
 	name string,
 	labels map[string]string,
-	job api.PipelineJobSpec,
+	storage api.WorkspaceStorage,
+	job api.PipelineJobSpecJob,
 ) api.PipelineJob {
 	return api.PipelineJob{
 		TypeMeta: metav1.TypeMeta{
@@ -19,6 +20,11 @@ func GetPipelineJob(
 			Name:   name,
 			Labels: labels,
 		},
-		Spec: job,
+		Spec: api.PipelineJobSpec{
+			Workspace: api.PipelineJobWorkspace{
+				Storage: storage,
+			},
+			Job: job,
+		},
 	}
 }

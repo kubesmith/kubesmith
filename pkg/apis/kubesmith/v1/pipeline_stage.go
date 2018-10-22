@@ -11,7 +11,8 @@ import (
 )
 
 type PipelineStageSpec struct {
-	Jobs []PipelineJobSpec `json:"jobs"`
+	Workspace PipelineStageWorkspace `json:"workspace"`
+	Jobs      []PipelineJobSpecJob   `json:"jobs"`
 }
 
 type PipelineStageStatus struct {
@@ -20,6 +21,10 @@ type PipelineStageStatus struct {
 	EndTime         metav1.Time `json:"endTime"`
 	LastUpdatedTime metav1.Time `json:"lastUpdatedTime"`
 	FailureReason   string      `json:"failureReason"`
+}
+
+type PipelineStageWorkspace struct {
+	Storage WorkspaceStorage `json:"storage"`
 }
 
 // +genclient

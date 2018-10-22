@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,11 +13,16 @@ import (
 )
 
 func GetRepoCloneJob(
-	name, sshSecretName, sshSecretKey, repoURL, s3Host string,
-	s3Port int,
-	s3SecretName string,
+	name string,
+	repo api.WorkspaceRepo,
+	s3Config api.WorkspaceStorageS3,
 	labels map[string]string,
 ) batchv1.Job {
+	s3UseSSL := "false"
+	if s3Config.UseSSL == true {
+		s3UseSSL = "true"
+	}
+
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -60,7 +66,7 @@ func GetRepoCloneJob(
 							Command: []string{"/bin/sh", "-xc"},
 							Args: []string{
 								strings.Join([]string{
-									fmt.Sprintf("git clone %s /git/workspace", repoURL),
+									fmt.Sprintf("git clone %s /git/workspace", repo.URL),
 									"rm -rf /git/workspace/.git",
 									"ls -la /git/workspace",
 									"touch /git/kubesmith-ipc-flag",
@@ -86,24 +92,24 @@ func GetRepoCloneJob(
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
 									Name:  "S3_HOST",
-									Value: s3Host,
+									Value: s3Config.Host,
 								},
 								corev1.EnvVar{
 									Name:  "S3_PORT",
-									Value: strconv.Itoa(s3Port),
+									Value: strconv.Itoa(s3Config.Port),
 								},
 								corev1.EnvVar{
 									Name:  "S3_BUCKET_NAME",
-									Value: "workspace",
+									Value: s3Config.BucketName,
 								},
 								corev1.EnvVar{
 									Name: "S3_ACCESS_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: s3SecretName,
+												Name: s3Config.Credentials.Secret.Name,
 											},
-											Key: "access-key",
+											Key: s3Config.Credentials.Secret.AccessKeyKey,
 										},
 									},
 								},
@@ -112,15 +118,15 @@ func GetRepoCloneJob(
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: s3SecretName,
+												Name: s3Config.Credentials.Secret.Name,
 											},
-											Key: "secret-key",
+											Key: s3Config.Credentials.Secret.SecretKeyKey,
 										},
 									},
 								},
 								corev1.EnvVar{
 									Name:  "S3_USE_SSL",
-									Value: "false",
+									Value: s3UseSSL,
 								},
 								corev1.EnvVar{
 									Name:  "ARCHIVE_FILE_NAME",
@@ -174,10 +180,10 @@ func GetRepoCloneJob(
 							Name: "ssh",
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
-									SecretName: sshSecretName,
+									SecretName: repo.SSH.Secret.Name,
 									Items: []corev1.KeyToPath{
 										corev1.KeyToPath{
-											Key:  sshSecretKey,
+											Key:  repo.SSH.Secret.Key,
 											Path: "id_rsa",
 										},
 									},

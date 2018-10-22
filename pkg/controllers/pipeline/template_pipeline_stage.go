@@ -7,8 +7,9 @@ import (
 
 func GetPipelineStage(
 	name string,
+	storage api.WorkspaceStorage,
 	labels map[string]string,
-	jobs []api.PipelineJobSpec,
+	jobs []api.PipelineJobSpecJob,
 ) api.PipelineStage {
 	return api.PipelineStage{
 		TypeMeta: metav1.TypeMeta{
@@ -20,6 +21,9 @@ func GetPipelineStage(
 			Labels: labels,
 		},
 		Spec: api.PipelineStageSpec{
+			Workspace: api.PipelineStageWorkspace{
+				Storage: storage,
+			},
 			Jobs: jobs,
 		},
 	}

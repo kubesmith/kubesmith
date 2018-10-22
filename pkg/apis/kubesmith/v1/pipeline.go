@@ -223,8 +223,8 @@ func (p *Pipeline) GetPatchFromOriginal(original Pipeline) (types.PatchType, []b
 	return types.MergePatchType, patchBytes, nil
 }
 
-func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpec {
-	job := PipelineJobSpec{
+func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpecJob {
+	job := PipelineJobSpecJob{
 		Name:          oldJob.Name,
 		Image:         oldJob.Image,
 		Environment:   oldJob.Environment,
@@ -298,8 +298,8 @@ func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpec {
 	return job
 }
 
-func (p *Pipeline) GetExpandedJobs() []PipelineJobSpec {
-	expandedJobs := []PipelineJobSpec{}
+func (p *Pipeline) GetExpandedJobs() []PipelineJobSpecJob {
+	expandedJobs := []PipelineJobSpecJob{}
 
 	for _, oldJob := range p.Spec.Jobs {
 		expandedJobs = append(expandedJobs, p.expandJob(oldJob))
@@ -308,8 +308,8 @@ func (p *Pipeline) GetExpandedJobs() []PipelineJobSpec {
 	return expandedJobs
 }
 
-func (p *Pipeline) GetExpandedJobsForCurrentStage() []PipelineJobSpec {
-	expanded := []PipelineJobSpec{}
+func (p *Pipeline) GetExpandedJobsForCurrentStage() []PipelineJobSpecJob {
+	expanded := []PipelineJobSpecJob{}
 	stageName := strings.ToLower(p.GetCurrentStageName())
 
 	if stageName == "" {

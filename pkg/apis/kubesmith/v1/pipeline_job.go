@@ -12,6 +12,11 @@ import (
 )
 
 type PipelineJobSpec struct {
+	Workspace PipelineJobWorkspace `json:"workspace"`
+	Job       PipelineJobSpecJob   `json:"job"`
+}
+
+type PipelineJobSpecJob struct {
 	Name          string                `json:"name"`
 	Image         string                `json:"image"`
 	Environment   map[string]string     `json:"environment"`
@@ -21,6 +26,10 @@ type PipelineJobSpec struct {
 	Runner        []string              `json:"runner"`
 	AllowFailure  bool                  `json:"allowFailure"`
 	Artifacts     []PipelineJobArtifact `json:"artifacts"`
+}
+
+type PipelineJobWorkspace struct {
+	Storage WorkspaceStorage `json:"storage"`
 }
 
 type PipelineJobStatus struct {
@@ -54,23 +63,23 @@ type PipelineJobList struct {
 // helpers
 
 func (p *PipelineJob) GetCommand() []string {
-	if len(p.Spec.Command) > 0 {
-		return p.Spec.Command
+	if len(p.Spec.Job.Command) > 0 {
+		return p.Spec.Job.Command
 	}
 
 	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
 }
 
 func (p *PipelineJob) GetConfigMapData() map[string]string {
-	if len(p.Spec.ConfigMapData) > 0 {
-		return p.Spec.ConfigMapData
+	if len(p.Spec.Job.ConfigMapData) > 0 {
+		return p.Spec.Job.ConfigMapData
 	}
 
-	return map[string]string{"pipeline-script.sh": strings.Join(p.Spec.Runner, "\n")}
+	return map[string]string{"pipeline-script.sh": strings.Join(p.Spec.Job.Runner, "\n")}
 }
 
 func (p *PipelineJob) IsAllowedToFail() bool {
-	return p.Spec.AllowFailure == true
+	return p.Spec.Job.AllowFailure == true
 }
 
 func (p *PipelineJob) HasNoPhase() bool {
@@ -134,7 +143,7 @@ func (p *PipelineJob) GetPatchFromOriginal(original PipelineJob) (types.PatchTyp
 	return types.MergePatchType, patchBytes, nil
 }
 
-func (p *PipelineJobSpec) Validate() error {
+func (p *PipelineJobSpecJob) Validate() error {
 	if p.Name == "" {
 		return errors.New("job name must not be empty")
 	}
@@ -154,5 +163,5 @@ func (p *PipelineJobSpec) Validate() error {
 }
 
 func (p *PipelineJob) Validate() error {
-	return p.Spec.Validate()
+	return p.Spec.Job.Validate()
 }

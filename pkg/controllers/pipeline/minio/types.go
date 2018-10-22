@@ -10,7 +10,10 @@ import (
 )
 
 const (
-	MINIO_PORT = 9000
+	MINIO_DEFAULT_PORT           = 9000
+	MINIO_DEFAULT_BUCKET_NAME    = "workspace"
+	MINIO_DEFAULT_ACCESS_KEY_KEY = "access-key"
+	MINIO_DEFAULT_SECRET_KEY_KEY = "secret-key"
 )
 
 type MinioServer struct {

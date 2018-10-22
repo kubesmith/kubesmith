@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,10 +12,6 @@ import (
 
 func (m *MinioServer) GetResourceName() string {
 	return fmt.Sprintf("%s-minio-server", m.resourcePrefix)
-}
-
-func (m *MinioServer) GetPort() int {
-	return MINIO_PORT
 }
 
 func (m *MinioServer) CreateSecret() error {
@@ -65,6 +60,10 @@ func (m *MinioServer) CreateDeployment() error {
 
 	m.minioDeployment = deployment
 	return nil
+}
+
+func (m *MinioServer) GetBucketName() string {
+	return fmt.Sprintf("%s-%s", m.resourcePrefix, MINIO_DEFAULT_BUCKET_NAME)
 }
 
 func (m *MinioServer) CreateService() error {
@@ -191,26 +190,4 @@ func (m *MinioServer) GetServiceHost() (string, error) {
 
 	host := fmt.Sprintf("%s.%s.svc", m.minioService.GetName(), m.minioService.GetNamespace())
 	return host, nil
-}
-
-func (m *MinioServer) GetS3Client() (*s3.S3Client, error) {
-	if m.minioService == nil {
-		return nil, errors.New("minio service has not been created")
-	} else if m.minioSecret == nil {
-		return nil, errors.New("minio secret has not been created")
-	}
-
-	_, err := m.GetServiceHost()
-	if err != nil {
-		return nil, err
-	}
-
-	return s3.NewS3Client(
-		// host,
-		"127.0.0.1",
-		int(m.GetPort()),
-		string(m.minioSecret.Data["access-key"]),
-		string(m.minioSecret.Data["secret-key"]),
-		false,
-	)
 }

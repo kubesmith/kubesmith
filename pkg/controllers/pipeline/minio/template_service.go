@@ -16,10 +16,10 @@ func GetMinioService(name string, labels map[string]string) corev1.Service {
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
-					Port: MINIO_PORT,
+					Port: MINIO_DEFAULT_PORT,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: MINIO_PORT,
+						IntVal: MINIO_DEFAULT_PORT,
 					},
 				},
 			},
