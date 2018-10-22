@@ -179,6 +179,7 @@ func (c *PipelineController) processFailedPipeline(original api.Pipeline, logger
 
 func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logger logrus.FieldLogger) error {
 	logger.Info("cleaning up pipeline")
+	// todo: cleanup this delete so it only affects things created by this controller
 	if err := c.cleanupMinioServerForPipeline(original, logger); err != nil {
 		return err
 	}
