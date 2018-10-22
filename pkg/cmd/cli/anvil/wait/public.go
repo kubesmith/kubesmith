@@ -11,7 +11,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/artifacts"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
-	watcher "github.com/kubesmith/kubesmith/pkg/cmd/util/file-watcher"
+	"github.com/kubesmith/kubesmith/pkg/cmd/util/filewatcher"
 	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -102,7 +102,7 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 
 	// start watching for the file to exist
 	glog.V(1).Infof("Watching for flag file to exist at: %s for %d second(s) ...", o.FlagFile.Path, o.FlagFile.WatchTimeout)
-	go watcher.WatchForFile(ctx, o.FlagFile.Path, o.FlagFile.WatchInterval, flagFileCreated)
+	go filewatcher.WatchForFile(ctx, o.FlagFile.Path, o.FlagFile.WatchInterval, flagFileCreated)
 
 	// hang on the golang channel until the watcher detects the flag file (or times out)
 	if created := <-flagFileCreated; !created {

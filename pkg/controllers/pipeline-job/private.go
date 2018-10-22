@@ -91,27 +91,27 @@ func (c *PipelineJobController) processEmptyPhasePipelineJob(original api.Pipeli
 }
 
 func (c *PipelineJobController) processQueuedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing queued pipeline")
+	logger.Info("todo: processing queued pipeline job")
 	return nil
 }
 
 func (c *PipelineJobController) processRunningPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing running pipeline")
+	logger.Info("todo: processing running pipeline job")
 	return nil
 }
 
 func (c *PipelineJobController) processSuccessfulPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing successful pipeline")
+	logger.Info("todo: processing successful pipeline job")
 	return nil
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing failed pipeline")
+	logger.Info("todo: processing failed pipeline job")
 	return nil
 }
 
 func (c *PipelineJobController) processDeletedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing deleted pipeline")
+	logger.Info("todo: processing deleted pipeline job")
 	return nil
 }
 
