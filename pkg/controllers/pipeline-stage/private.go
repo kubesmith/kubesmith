@@ -34,7 +34,7 @@ func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) e
 		// create a new logger for this pipeline stage's execution
 		logger := c.logger.WithFields(logrus.Fields{
 			"Name":  stage.GetName(),
-			"Phase": stage.GetPhase(),
+			"Phase": stage.Status.Phase,
 		})
 
 		// determine the phase and begin execution of the pipeline stage
@@ -89,7 +89,7 @@ func (c *PipelineStageController) processEmptyPhasePipelineStage(original api.Pi
 }
 
 func (c *PipelineStageController) processRunningPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
-	for index, job := range original.GetJobs() {
+	for index, job := range original.Spec.Jobs {
 		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
 
 		logger.Info("ensuring pipeline job is scheduled")

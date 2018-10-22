@@ -15,35 +15,41 @@ import (
 )
 
 type PipelineSpec struct {
-	Workspace   PipelineWorkspace     `json:"workspace"`
-	Environment map[string]string     `json:"environment"`
-	Templates   []PipelineJobTemplate `json:"templates"`
-	Stages      []string              `json:"stages"`
-	Jobs        []PipelineJobSpec     `json:"jobs"`
+	Workspace   PipelineWorkspace         `json:"workspace"`
+	Environment map[string]string         `json:"environment"`
+	Templates   []PipelineSpecJobTemplate `json:"templates"`
+	Stages      []string                  `json:"stages"`
+	Jobs        []PipelineSpecJob         `json:"jobs"`
 }
 
 type PipelineWorkspace struct {
-	Path    string               `json:"path"`
-	RepoURL string               `json:"repoURL"`
-	SSH     PipelineWorkspaceSSH `json:"ssh"`
+	Path    string           `json:"path"`
+	Repo    WorkspaceRepo    `json:"repo"`
+	Storage WorkspaceStorage `json:"storage"`
 }
 
-type PipelineWorkspaceSSH struct {
-	Secret PipelineWorkspaceSSHSecret `json:"secret"`
-}
-
-type PipelineWorkspaceSSHSecret struct {
-	Name string `json:"name"`
-	Key  string `json:"key"`
-}
-
-type PipelineJobTemplate struct {
+type PipelineSpecJobTemplate struct {
 	Name          string                `json:"name"`
 	Image         string                `json:"image"`
 	Environment   map[string]string     `json:"environment"`
 	Command       []string              `json:"command"`
 	Args          []string              `json:"args"`
 	ConfigMapData map[string]string     `json:"configMapData"`
+	Artifacts     []PipelineJobArtifact `json:"artifacts"`
+	OnlyOn        []string              `json:"onlyOn"`
+}
+
+type PipelineSpecJob struct {
+	Name          string                `json:"name"`
+	Image         string                `json:"image"`
+	Stage         string                `json:"stage"`
+	Extends       []string              `json:"extends"`
+	Environment   map[string]string     `json:"environment"`
+	Command       []string              `json:"command"`
+	Args          []string              `json:"args"`
+	ConfigMapData map[string]string     `json:"configMapData"`
+	Runner        []string              `json:"runner"`
+	AllowFailure  bool                  `json:"allowFailure"`
 	Artifacts     []PipelineJobArtifact `json:"artifacts"`
 	OnlyOn        []string              `json:"onlyOn"`
 }
@@ -79,42 +85,6 @@ type PipelineList struct {
 
 // helpers
 
-func (p *Pipeline) GetLastUpdatedTime() metav1.Time {
-	return p.Status.LastUpdatedTime
-}
-
-func (p *Pipeline) GetFailureReason() string {
-	return p.Status.FailureReason
-}
-
-func (p *Pipeline) GetStartTime() metav1.Time {
-	return p.Status.StartTime
-}
-
-func (p *Pipeline) GetEndTime() metav1.Time {
-	return p.Status.EndTime
-}
-
-func (p *Pipeline) GetStages() []string {
-	return p.Spec.Stages
-}
-
-func (p *Pipeline) GetTemplates() []PipelineJobTemplate {
-	return p.Spec.Templates
-}
-
-func (p *Pipeline) GetJobs() []PipelineJobSpec {
-	return p.Spec.Jobs
-}
-
-func (p *Pipeline) GetEnvironment() map[string]string {
-	return p.Spec.Environment
-}
-
-func (p *Pipeline) GetPhase() Phase {
-	return p.Status.Phase
-}
-
 func (p *Pipeline) GetHashID() string {
 	prefix := fmt.Sprintf("%s:%s", p.GetName(), p.GetNamespace())
 	hash := fnv.New32a()
@@ -122,10 +92,6 @@ func (p *Pipeline) GetHashID() string {
 	hash.Write([]byte(prefix))
 
 	return fmt.Sprintf("%d", hash.Sum32())
-}
-
-func (p *Pipeline) GetStageIndex() int {
-	return p.Status.StageIndex
 }
 
 func (p *Pipeline) GetResourcePrefix() string {
@@ -141,16 +107,13 @@ func (p *Pipeline) GetResourceLabels() map[string]string {
 }
 
 func (p *Pipeline) GetCurrentStageName() string {
-	stageIndex := p.GetStageIndex()
-	stages := p.GetStages()
-
-	if stageIndex == 0 {
+	if p.Status.StageIndex == 0 {
 		return ""
-	} else if stageIndex > len(stages) {
+	} else if p.Status.StageIndex > len(p.Spec.Stages) {
 		return ""
 	}
 
-	return stages[stageIndex-1]
+	return p.Spec.Stages[p.Status.StageIndex-1]
 }
 
 func (p *Pipeline) GetWorkspacePath() string {
@@ -163,42 +126,50 @@ func (p *Pipeline) GetWorkspacePath() string {
 	return path
 }
 
-func (p *Pipeline) GetWorkspaceRepoURL() string {
-	return p.Spec.Workspace.RepoURL
+func (p *PipelineSpecJob) GetCommand() []string {
+	if len(p.Command) > 0 {
+		return p.Command
+	}
+
+	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
 }
 
-func (p *Pipeline) GetWorkspaceSSHSecretName() string {
-	return p.Spec.Workspace.SSH.Secret.Name
+func (p *PipelineSpecJob) GetConfigMapData() map[string]string {
+	if len(p.ConfigMapData) > 0 {
+		return p.ConfigMapData
+	}
+
+	return map[string]string{"pipeline-script.sh": strings.Join(p.Runner, "\n")}
 }
 
-func (p *Pipeline) GetWorkspaceSSHSecretKey() string {
-	return p.Spec.Workspace.SSH.Secret.Key
+func (p *PipelineSpecJob) IsAllowedToFail() bool {
+	return p.AllowFailure == true
 }
 
 func (p *Pipeline) HasNoPhase() bool {
-	return p.GetPhase() == PhaseEmpty
+	return p.Status.Phase == PhaseEmpty
 }
 
 func (p *Pipeline) IsQueued() bool {
-	return p.GetPhase() == PhaseQueued
+	return p.Status.Phase == PhaseQueued
 }
 
 func (p *Pipeline) IsRunning() bool {
-	return p.GetPhase() == PhaseRunning
+	return p.Status.Phase == PhaseRunning
 }
 
 func (p *Pipeline) HasSucceeded() bool {
-	return p.GetPhase() == PhaseSucceeded
+	return p.Status.Phase == PhaseSucceeded
 }
 
 func (p *Pipeline) HasFailed() bool {
-	return p.GetPhase() == PhaseFailed
+	return p.Status.Phase == PhaseFailed
 }
 
-func (p *Pipeline) GetTemplateByName(name string) (*PipelineJobTemplate, error) {
+func (p *Pipeline) GetTemplateByName(name string) (*PipelineSpecJobTemplate, error) {
 	name = strings.ToLower(name)
 
-	for _, template := range p.GetTemplates() {
+	for _, template := range p.Spec.Templates {
 		if strings.ToLower(template.Name) == name {
 			return &template, nil
 		}
@@ -219,13 +190,13 @@ func (p *Pipeline) SetPhaseToRunning() {
 }
 
 func (p *Pipeline) SetPhaseToSucceeded() {
-	p.Status.StageIndex = len(p.GetStages())
+	p.Status.StageIndex = len(p.Spec.Stages)
 	p.Status.Phase = PhaseSucceeded
 	p.Status.EndTime.Time = time.Now()
 }
 
 func (p *Pipeline) SetPhaseToFailed(reason string) {
-	p.Status.StageIndex = len(p.GetStages())
+	p.Status.StageIndex = len(p.Spec.Stages)
 	p.Status.Phase = PhaseFailed
 	p.Status.EndTime.Time = time.Now()
 	p.Status.FailureReason = reason
@@ -252,16 +223,27 @@ func (p *Pipeline) GetPatchFromOriginal(original Pipeline) (types.PatchType, []b
 	return types.MergePatchType, patchBytes, nil
 }
 
-func (p *Pipeline) expandJob(oldJob PipelineJobSpec) PipelineJobSpec {
-	job := *oldJob.DeepCopy()
+func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpec {
+	job := PipelineJobSpec{
+		Name:          oldJob.Name,
+		Image:         oldJob.Image,
+		Environment:   oldJob.Environment,
+		Command:       oldJob.Command,
+		Args:          oldJob.Args,
+		ConfigMapData: oldJob.ConfigMapData,
+		Runner:        oldJob.Runner,
+		AllowFailure:  oldJob.AllowFailure,
+		Artifacts:     oldJob.Artifacts,
+	}
+
 	env := map[string]string{}
 	artifacts := []PipelineJobArtifact{}
 
-	for key, value := range p.GetEnvironment() {
+	for key, value := range p.Spec.Environment {
 		env[key] = value
 	}
 
-	for _, templateName := range job.Extends {
+	for _, templateName := range oldJob.Extends {
 		template, _ := p.GetTemplateByName(templateName)
 		if template == nil {
 			continue
@@ -300,10 +282,6 @@ func (p *Pipeline) expandJob(oldJob PipelineJobSpec) PipelineJobSpec {
 		for _, artifact := range template.Artifacts {
 			artifacts = append(artifacts, artifact)
 		}
-
-		if len(template.OnlyOn) > 0 {
-			job.OnlyOn = template.OnlyOn
-		}
 	}
 
 	for key, value := range oldJob.Environment {
@@ -317,17 +295,13 @@ func (p *Pipeline) expandJob(oldJob PipelineJobSpec) PipelineJobSpec {
 	job.Environment = env
 	job.Artifacts = artifacts
 
-	if len(oldJob.OnlyOn) > 0 {
-		job.OnlyOn = oldJob.OnlyOn
-	}
-
 	return job
 }
 
 func (p *Pipeline) GetExpandedJobs() []PipelineJobSpec {
 	expandedJobs := []PipelineJobSpec{}
 
-	for _, oldJob := range p.GetJobs() {
+	for _, oldJob := range p.Spec.Jobs {
 		expandedJobs = append(expandedJobs, p.expandJob(oldJob))
 	}
 
@@ -342,7 +316,7 @@ func (p *Pipeline) GetExpandedJobsForCurrentStage() []PipelineJobSpec {
 		return expanded
 	}
 
-	for _, oldJob := range p.GetJobs() {
+	for _, oldJob := range p.Spec.Jobs {
 		if strings.ToLower(oldJob.Stage) == stageName {
 			expanded = append(expanded, p.expandJob(oldJob))
 		}
@@ -352,9 +326,9 @@ func (p *Pipeline) GetExpandedJobsForCurrentStage() []PipelineJobSpec {
 }
 
 func (p *Pipeline) AdvanceCurrentStage() {
-	stageIndex := p.GetStageIndex() + 1
+	stageIndex := p.Status.StageIndex + 1
 
-	if stageIndex > len(p.GetStages()) {
+	if stageIndex > len(p.Spec.Stages) {
 		p.SetPhaseToSucceeded()
 		return
 	}
@@ -362,17 +336,40 @@ func (p *Pipeline) AdvanceCurrentStage() {
 	p.Status.StageIndex = stageIndex
 }
 
+func (p *PipelineSpecJob) Validate() error {
+	if p.Name == "" {
+		return errors.New("job name must not be empty")
+	}
+
+	if p.Image == "" {
+		return errors.New("job image must not be empty")
+	}
+
+	if p.Stage == "" {
+		return errors.New("job stage must be specified")
+	}
+
+	hasCommands := len(p.Command) > 0 || len(p.Args) > 0
+	hasRunner := len(p.Runner) > 0
+
+	if hasCommands && hasRunner {
+		return errors.New("job must have either command/args or runner specified; not both")
+	}
+
+	return nil
+}
+
 func (p *Pipeline) ValidateWorkspace() error {
 	validGitURL := regexp.MustCompile(`(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$`)
-	if !validGitURL.MatchString(p.GetWorkspaceRepoURL()) {
+	if !validGitURL.MatchString(p.Spec.Workspace.Repo.URL) {
 		return errors.New("workspace repo url must be a valid git url")
 	}
 
-	if p.GetWorkspaceSSHSecretName() == "" {
+	if p.Spec.Workspace.Repo.SSH.Secret.Name == "" {
 		return errors.New("workspace ssh secret name must be specified")
 	}
 
-	if p.GetWorkspaceSSHSecretKey() == "" {
+	if p.Spec.Workspace.Repo.SSH.Secret.Key == "" {
 		return errors.New("workspace ssh secret key must be specified")
 	}
 
@@ -380,18 +377,15 @@ func (p *Pipeline) ValidateWorkspace() error {
 }
 
 func (p *Pipeline) ValidateStages() error {
-	stages := p.GetStages()
-	jobs := p.GetJobs()
-
-	if len(stages) == 0 {
+	if len(p.Spec.Stages) == 0 {
 		return errors.New("pipeline must have at least 1 stage specified")
 	}
 
-	for _, stage := range stages {
+	for _, stage := range p.Spec.Stages {
 		stage = strings.ToLower(stage)
 		hasJobs := false
 
-		for _, job := range jobs {
+		for _, job := range p.Spec.Jobs {
 			if stage == strings.ToLower(job.Stage) {
 				hasJobs = true
 				break
@@ -408,11 +402,11 @@ func (p *Pipeline) ValidateStages() error {
 
 func (p *Pipeline) ValidateJobs() error {
 	// first, validate some basic properties of the jobs
-	for _, job := range p.GetJobs() {
+	for _, job := range p.Spec.Jobs {
 		// check that the stage exists
 		jobStage := strings.ToLower(job.Stage)
 		foundStage := false
-		for _, stage := range p.GetStages() {
+		for _, stage := range p.Spec.Stages {
 			if jobStage == strings.ToLower(stage) {
 				foundStage = true
 				break
@@ -428,7 +422,7 @@ func (p *Pipeline) ValidateJobs() error {
 			foundExtend := false
 			extend = strings.ToLower(extend)
 
-			for _, extension := range p.GetTemplates() {
+			for _, extension := range p.Spec.Templates {
 				if extend == strings.ToLower(extension.Name) {
 					foundExtend = true
 					break

@@ -41,8 +41,8 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 		// create a new logger for this pipeline's execution
 		logger := c.logger.WithFields(logrus.Fields{
 			"Name":       pipeline.GetName(),
-			"Phase":      pipeline.GetPhase(),
-			"StageIndex": pipeline.GetStageIndex(),
+			"Phase":      pipeline.Status.Phase,
+			"StageIndex": pipeline.Status.StageIndex,
 		})
 
 		// determine the phase and begin execution of the pipeline
@@ -351,9 +351,9 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 
 			job := GetRepoCloneJob(
 				name,
-				original.GetWorkspaceSSHSecretName(),
-				original.GetWorkspaceSSHSecretKey(),
-				original.GetWorkspaceRepoURL(),
+				original.Spec.Workspace.Repo.SSH.Secret.Name,
+				original.Spec.Workspace.Repo.SSH.Secret.Key,
+				original.Spec.Workspace.Repo.URL,
 				host,
 				minioServer.GetPort(),
 				minioServer.GetResourceName(),
@@ -413,7 +413,7 @@ func (c *PipelineController) cleanupMinioServerForPipeline(original api.Pipeline
 
 func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.Pipeline, logger logrus.FieldLogger) error {
 	logger.Info("ensuring pipeline stage is scheduled")
-	name := fmt.Sprintf("%s-stage-%d", original.GetResourcePrefix(), original.GetStageIndex())
+	name := fmt.Sprintf("%s-stage-%d", original.GetResourcePrefix(), original.Status.StageIndex)
 
 	if _, err := c.pipelineStageLister.PipelineStages(original.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {

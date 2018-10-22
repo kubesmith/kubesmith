@@ -44,44 +44,20 @@ type PipelineStageList struct {
 
 // helpers
 
-func (p *PipelineStage) GetPhase() Phase {
-	return p.Status.Phase
-}
-
-func (p *PipelineStage) GetJobs() []PipelineJobSpec {
-	return p.Spec.Jobs
-}
-
-func (p *PipelineStage) GetStartTime() metav1.Time {
-	return p.Status.StartTime
-}
-
-func (p *PipelineStage) GetEndTime() metav1.Time {
-	return p.Status.EndTime
-}
-
-func (p *PipelineStage) GetLastUpdatedTime() metav1.Time {
-	return p.Status.LastUpdatedTime
-}
-
-func (p *PipelineStage) GetFailureReason() string {
-	return p.Status.FailureReason
-}
-
 func (p *PipelineStage) HasNoPhase() bool {
-	return p.GetPhase() == PhaseEmpty
+	return p.Status.Phase == PhaseEmpty
 }
 
 func (p *PipelineStage) IsRunning() bool {
-	return p.GetPhase() == PhaseRunning
+	return p.Status.Phase == PhaseRunning
 }
 
 func (p *PipelineStage) HasSucceeded() bool {
-	return p.GetPhase() == PhaseSucceeded
+	return p.Status.Phase == PhaseSucceeded
 }
 
 func (p *PipelineStage) HasFailed() bool {
-	return p.GetPhase() == PhaseFailed
+	return p.Status.Phase == PhaseFailed
 }
 
 func (p *PipelineStage) SetPhaseToQueued() {
@@ -126,7 +102,7 @@ func (p *PipelineStage) GetPatchFromOriginal(original PipelineStage) (types.Patc
 }
 
 func (p *PipelineStage) Validate() error {
-	for _, job := range p.GetJobs() {
+	for _, job := range p.Spec.Jobs {
 		if err := job.Validate(); err != nil {
 			return err
 		}

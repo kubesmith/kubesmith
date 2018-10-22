@@ -42,10 +42,6 @@ type ForgeList struct {
 
 // helpers
 
-func (p *Forge) GetLastUpdatedTime() metav1.Time {
-	return p.Status.LastUpdatedTime
-}
-
 func (p *Forge) GetPatchFromOriginal(original Forge) (types.PatchType, []byte, error) {
 	p.Status.LastUpdatedTime.Time = time.Now()
 

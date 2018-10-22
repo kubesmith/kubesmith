@@ -68,14 +68,14 @@ func NewPipelineController(
 
 				logger := c.logger.WithFields(logrus.Fields{
 					"Name":       updatedPipeline.GetName(),
-					"Phase":      updatedPipeline.GetPhase(),
-					"StageIndex": updatedPipeline.GetStageIndex(),
+					"Phase":      updatedPipeline.Status.Phase,
+					"StageIndex": updatedPipeline.Status.StageIndex,
 				})
 
-				if updatedPipeline.GetPhase() != oldPipeline.GetPhase() {
+				if updatedPipeline.Status.Phase != oldPipeline.Status.Phase {
 					logger.Info("queueing pipeline: phase changed")
 					c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
-				} else if updatedPipeline.IsRunning() && (updatedPipeline.GetStageIndex() != oldPipeline.GetStageIndex()) {
+				} else if updatedPipeline.IsRunning() && (updatedPipeline.Status.StageIndex != oldPipeline.Status.StageIndex) {
 					logger.Info("queueing pipeline; stage index advanced")
 					c.Queue.Add(sync.PipelineUpdateAction(*updatedPipeline))
 				}

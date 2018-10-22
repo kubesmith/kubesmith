@@ -33,7 +33,7 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 		// create a new logger for this pipeline job's execution
 		logger := c.logger.WithFields(logrus.Fields{
 			"Name":  job.GetName(),
-			"Phase": job.GetPhase(),
+			"Phase": job.Status.Phase,
 		})
 
 		// determine the phase and begin execution of the pipeline job
