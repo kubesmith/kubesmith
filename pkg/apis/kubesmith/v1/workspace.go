@@ -1,7 +1,6 @@
 package v1
 
 type WorkspaceStorage struct {
-	// todo: add a "repoArtifactPath"
 	RepoArtifactPath string             `json:"repoArtifactPath"`
 	S3               WorkspaceStorageS3 `json:"s3"`
 }

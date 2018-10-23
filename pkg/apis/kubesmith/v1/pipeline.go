@@ -360,6 +360,8 @@ func (p *PipelineSpecJob) Validate() error {
 }
 
 func (p *Pipeline) ValidateWorkspace() error {
+	// todo: validate whether or not the workspace has a repo URL or a RepoArtifactPath
+
 	validGitURL := regexp.MustCompile(`(?:git|ssh|https?|git@[-\w.]+):(\/\/)?(.*?)(\.git)(\/?|\#[-\d\w._]+?)$`)
 	if !validGitURL.MatchString(p.Spec.Workspace.Repo.URL) {
 		return errors.New("workspace repo url must be a valid git url")
