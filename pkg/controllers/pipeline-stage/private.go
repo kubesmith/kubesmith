@@ -8,6 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) error {
@@ -124,7 +127,37 @@ func (c *PipelineStageController) processFailedPipelineStage(original api.Pipeli
 }
 
 func (c *PipelineStageController) processDeletedPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing deleted pipeline stage")
+	// create a selector for listing resources associated to pipeline stage
+	logger.Info("creating label selector for associated resources")
+	labelSelector, err := c.getResourceLabelSelector(c.getWrappedLabels(original))
+	if err != nil {
+		return errors.Wrap(err, "could not create label selector for pipeline")
+	}
+	logger.Info("created label selector for associated resources")
+
+	// create the delete options that can help clean everything up
+	propagationPolicy := metav1.DeletePropagationBackground
+	deleteOptions := metav1.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	}
+
+	// attempt to get all pipeline stages associated to the pipeline
+	logger.Info("retrieving pipeline jobs")
+	jobs, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve pipeline jobs")
+	}
+	logger.Info("retrieved pipeline jobs")
+
+	// delete all of the pipeline jobs associated to the pipeline
+	logger.Info("deleting pipeline jobs")
+	for _, job := range jobs {
+		if err := c.kubesmithClient.PipelineJobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
+			return errors.Wrapf(err, "could not delete pipeline job: %s/%s", job.GetName(), job.GetNamespace())
+		}
+	}
+
+	logger.Info("deleted pipeline jobs")
 	return nil
 }
 
@@ -175,4 +208,19 @@ func (c *PipelineStageController) ensureJobIsScheduled(
 
 func (c *PipelineStageController) cleanupJob(name string) error {
 	return nil
+}
+
+func (c *PipelineStageController) getResourceLabelSelector(resourceLabels map[string]string) (labels.Selector, error) {
+	selector := labels.NewSelector()
+
+	for key, value := range resourceLabels {
+		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create label requirement")
+		}
+
+		selector.Add(*req)
+	}
+
+	return selector, nil
 }

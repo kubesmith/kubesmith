@@ -183,7 +183,7 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 		return err
 	}
 
-	// create a selector for listing resources associated to pipeline jobs
+	// create a selector for listing resources associated to pipelines
 	logger.Info("creating label selector for associated resources")
 	labelSelector, err := c.getResourceLabelSelector(c.getWrappedLabels(original))
 	if err != nil {
