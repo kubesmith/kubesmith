@@ -212,9 +212,9 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 
 func (c *PipelineJobController) getWrappedLabels(original api.PipelineJob) map[string]string {
 	labels := original.GetLabels()
-	labels["Controller"] = "PipelineJob"
-	labels["PipelineJobName"] = original.GetName()
-	labels["PipelineJobNamespace"] = original.GetNamespace()
+	labels[api.GetLabelKey("Controller")] = "PipelineJob"
+	labels[api.GetLabelKey("PipelineJobName")] = original.GetName()
+	labels[api.GetLabelKey("PipelineJobNamespace")] = original.GetNamespace()
 
 	return labels
 }

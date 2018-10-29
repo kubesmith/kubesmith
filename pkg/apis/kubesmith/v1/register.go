@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,6 +28,10 @@ var SchemeGroupVersion = schema.GroupVersion{
 // Resource gets a Kubesmith GroupResource for a specified resource
 func Resource(resource string) schema.GroupResource {
 	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}
+
+func GetLabelKey(key string) string {
+	return fmt.Sprintf("%s/%s", GroupName, key)
 }
 
 type typeInfo struct {

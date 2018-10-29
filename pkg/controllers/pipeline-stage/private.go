@@ -163,9 +163,9 @@ func (c *PipelineStageController) patchPipelineStage(updated, original api.Pipel
 
 func (c *PipelineStageController) getWrappedLabels(original api.PipelineStage) map[string]string {
 	labels := original.GetLabels()
-	labels["Controller"] = "PipelineStage"
-	labels["PipelineStageName"] = original.GetName()
-	labels["PipelineStageNamespace"] = original.GetNamespace()
+	labels[api.GetLabelKey("Controller")] = "PipelineStage"
+	labels[api.GetLabelKey("PipelineStageName")] = original.GetName()
+	labels[api.GetLabelKey("PipelineStageNamespace")] = original.GetNamespace()
 
 	return labels
 }

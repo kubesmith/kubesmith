@@ -100,9 +100,9 @@ func (p *Pipeline) GetResourcePrefix() string {
 
 func (p *Pipeline) GetResourceLabels() map[string]string {
 	return map[string]string{
-		"PipelineName":      p.GetName(),
-		"PipelineNamespace": p.GetNamespace(),
-		"PipelineID":        p.GetHashID(),
+		GetLabelKey("PipelineName"):      p.GetName(),
+		GetLabelKey("PipelineNamespace"): p.GetNamespace(),
+		GetLabelKey("PipelineID"):        p.GetHashID(),
 	}
 }
 

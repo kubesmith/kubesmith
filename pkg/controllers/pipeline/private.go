@@ -281,7 +281,7 @@ func (c *PipelineController) canRunAnotherPipeline(original api.Pipeline) (bool,
 
 func (c *PipelineController) getWrappedLabels(pipeline api.Pipeline) map[string]string {
 	labels := pipeline.GetResourceLabels()
-	labels["Controller"] = "Pipeline"
+	labels[api.GetLabelKey("Controller")] = "Pipeline"
 
 	return labels
 }
