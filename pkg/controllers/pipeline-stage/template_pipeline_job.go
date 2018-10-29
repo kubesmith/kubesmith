@@ -8,6 +8,7 @@ import (
 func GetPipelineJob(
 	name string,
 	labels map[string]string,
+	repo api.WorkspaceRepo,
 	storage api.WorkspaceStorage,
 	job api.PipelineJobSpecJob,
 ) api.PipelineJob {
@@ -22,6 +23,7 @@ func GetPipelineJob(
 		},
 		Spec: api.PipelineJobSpec{
 			Workspace: api.PipelineJobWorkspace{
+				Repo:    repo,
 				Storage: storage,
 			},
 			Job: job,

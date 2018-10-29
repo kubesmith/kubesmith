@@ -29,6 +29,7 @@ type PipelineJobSpecJob struct {
 }
 
 type PipelineJobWorkspace struct {
+	Repo    WorkspaceRepo    `json:"repo"`
 	Storage WorkspaceStorage `json:"storage"`
 }
 

@@ -3,6 +3,7 @@ package pipelinejob
 import (
 	"strconv"
 
+	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/utils"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -23,13 +24,16 @@ func convertEnvironentToEnvVar(environment map[string]string) []corev1.EnvVar {
 }
 
 func GetJob(
-	name, image, s3Host string,
-	s3Port int,
-	s3BucketName, s3SecretName, repoPath string,
-	annotations, environment map[string]string,
+	name, image, repoPath string,
 	command, args []string,
-	labels map[string]string,
+	s3Config api.WorkspaceStorageS3,
+	annotations, environment, labels map[string]string,
 ) batchv1.Job {
+	s3UseSSL := "false"
+	if s3Config.UseSSL == true {
+		s3UseSSL = "true"
+	}
+
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
@@ -51,24 +55,24 @@ func GetJob(
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
 									Name:  "S3_HOST",
-									Value: s3Host,
+									Value: repoPath,
 								},
 								corev1.EnvVar{
 									Name:  "S3_PORT",
-									Value: strconv.Itoa(s3Port),
+									Value: strconv.Itoa(s3Config.Port),
 								},
 								corev1.EnvVar{
 									Name:  "S3_BUCKET_NAME",
-									Value: "workspace",
+									Value: s3Config.BucketName,
 								},
 								corev1.EnvVar{
 									Name: "S3_ACCESS_KEY",
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: s3SecretName,
+												Name: s3Config.Credentials.Secret.Name,
 											},
-											Key: "access-key",
+											Key: s3Config.Credentials.Secret.AccessKeyKey,
 										},
 									},
 								},
@@ -77,15 +81,15 @@ func GetJob(
 									ValueFrom: &corev1.EnvVarSource{
 										SecretKeyRef: &corev1.SecretKeySelector{
 											LocalObjectReference: corev1.LocalObjectReference{
-												Name: s3SecretName,
+												Name: s3Config.Credentials.Secret.Name,
 											},
-											Key: "secret-key",
+											Key: s3Config.Credentials.Secret.SecretKeyKey,
 										},
 									},
 								},
 								corev1.EnvVar{
 									Name:  "S3_USE_SSL",
-									Value: "false",
+									Value: s3UseSSL,
 								},
 								corev1.EnvVar{
 									Name:  "LOCAL_PATH",

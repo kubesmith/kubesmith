@@ -204,6 +204,8 @@ func (c *PipelineJobController) ensureJobConfigMapIsScheduled(name, namespace st
 func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, logger logrus.FieldLogger) error {
 	logger.Info("ensuring job is scheduled")
 
+	// todo: left off here
+
 	logger.Info("job is scheduled")
 	return nil
 }

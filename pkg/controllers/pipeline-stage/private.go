@@ -96,16 +96,7 @@ func (c *PipelineStageController) processRunningPipelineStage(original api.Pipel
 		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
 
 		logger.Info("ensuring pipeline job is scheduled")
-		err := c.ensureJobIsScheduled(
-			name,
-			original.GetNamespace(),
-			c.getWrappedLabels(original),
-			original.Spec.Workspace.Storage,
-			job,
-			logger,
-		)
-
-		if err != nil {
+		if err := c.ensureJobIsScheduled(name, original, job, logger); err != nil {
 			return errors.Wrap(err, "could not ensure pipeline job was scheduled")
 		}
 
@@ -180,18 +171,23 @@ func (c *PipelineStageController) getWrappedLabels(original api.PipelineStage) m
 }
 
 func (c *PipelineStageController) ensureJobIsScheduled(
-	name, namespace string,
-	labels map[string]string,
-	storage api.WorkspaceStorage,
+	name string,
+	original api.PipelineStage,
 	job api.PipelineJobSpecJob,
 	logger logrus.FieldLogger,
 ) error {
-	if _, err := c.pipelineJobLister.PipelineJobs(namespace).Get(name); err != nil {
+	if _, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("pipeline job does not exist; scheduling")
 
-			job := GetPipelineJob(name, labels, storage, job)
-			if _, err := c.kubesmithClient.PipelineJobs(namespace).Create(&job); err != nil {
+			job := GetPipelineJob(
+				name,
+				c.getWrappedLabels(original),
+				original.Spec.Workspace.Repo,
+				original.Spec.Workspace.Storage,
+				job,
+			)
+			if _, err := c.kubesmithClient.PipelineJobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not schedule pipeline job")
 			}
 

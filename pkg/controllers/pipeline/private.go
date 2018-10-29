@@ -453,6 +453,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 
 			pipelineStage := GetPipelineStage(
 				name,
+				original.Spec.Workspace.Repo,
 				original.Spec.Workspace.Storage,
 				c.getWrappedLabels(original),
 				original.GetExpandedJobsForCurrentStage(),
@@ -476,19 +477,10 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 func (c *PipelineController) pipelineNeedsMinio(original api.Pipeline) bool {
 	s3 := original.Spec.Workspace.Storage.S3
 
-	if s3.Host == "" {
-		return true
-	} else if s3.Port == 0 {
-		return true
-	} else if s3.BucketName == "" {
-		return true
-	} else if s3.Credentials.Secret.Name == "" {
-		return true
-	} else if s3.Credentials.Secret.AccessKeyKey == "" {
-		return true
-	} else if s3.Credentials.Secret.SecretKeyKey == "" {
-		return true
-	}
-
-	return false
+	return (s3.Host == "") ||
+		(s3.Port <= 0) ||
+		(s3.BucketName == "") ||
+		(s3.Credentials.Secret.Name == "") ||
+		(s3.Credentials.Secret.AccessKeyKey == "") ||
+		(s3.Credentials.Secret.SecretKeyKey == "")
 }

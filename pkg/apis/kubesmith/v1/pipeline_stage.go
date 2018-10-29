@@ -24,6 +24,7 @@ type PipelineStageStatus struct {
 }
 
 type PipelineStageWorkspace struct {
+	Repo    WorkspaceRepo    `json:"repo"`
 	Storage WorkspaceStorage `json:"storage"`
 }
 
