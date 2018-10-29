@@ -188,7 +188,7 @@
   version = "v2.1"
 
 [[projects]]
-  digest = "1:a59961d3a1bdcce745e237a22006f462e454297ba63f81f251e40e11801797ad"
+  digest = "1:f1a4a33cfdb6c1d5eb3b7cbb00dbdded2162a8191d90dabb5e204cda7ca12988"
   name = "github.com/minio/minio-go"
   packages = [
     ".",
@@ -199,8 +199,8 @@
     "pkg/set",
   ]
   pruneopts = "UT"
-  revision = "76305dad725fda18a9abcfc6cfc5797f251ea271"
-  version = "v6.0.8"
+  revision = "31e3bbc8590bf72d763be83a191836f02eb61437"
+  version = "v6.0.9"
 
 [[projects]]
   digest = "1:78bbb1ba5b7c3f2ed0ea1eab57bdd3859aec7e177811563edc41198a760b06af"
@@ -302,7 +302,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  digest = "1:4aeb3860275fa1fd60cccfb5a6ef85da438bf17402e1e84412ade4d4b55066a0"
+  digest = "1:db345c377984d0907323c09a9b17f11d995a59649fd38f909727df358b5f9020"
   name = "github.com/ulikunitz/xz"
   packages = [
     ".",
@@ -311,12 +311,12 @@
     "lzma",
   ]
   pruneopts = "UT"
-  revision = "0c6b41e72360850ca4f98dc341fd999726ea007f"
-  version = "v0.5.4"
+  revision = "590df8077fbcb06ad62d7714da06c00e5dd2316d"
+  version = "v0.5.5"
 
 [[projects]]
   branch = "master"
-  digest = "1:57fc8065a25e45bda6925e55b69a8ea2eb2e449d0bb69643346e70afd2f7d2ed"
+  digest = "1:8f3bc3b95fde5c763729fadf501ba52b8eb7c378629b91d2505d89ef1cc4a3a3"
   name = "golang.org/x/crypto"
   packages = [
     "argon2",
@@ -324,11 +324,11 @@
     "ssh/terminal",
   ]
   pruneopts = "UT"
-  revision = "0c41d7ab0a0ee717d4590a44bcb987dfd9e183eb"
+  revision = "b078efbc8099b041569edb8c6ab625cd430e3fce"
 
 [[projects]]
   branch = "master"
-  digest = "1:b41f13f4d5dbbd63abe9bf646575e4f83d2637ca243b97ea79b7807242518e8c"
+  digest = "1:341204cc93964f974aafe67b97f47a4e3ed7f84b2f041ac75873fde6dff41164"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -338,11 +338,11 @@
     "idna",
   ]
   pruneopts = "UT"
-  revision = "04a2e542c03f1d053ab3e4d6e5abcd4b66e2be8e"
+  revision = "c44066c5c816ec500d459a2a324a753f78531ae0"
 
 [[projects]]
   branch = "master"
-  digest = "1:8009bc31cdc6635b243e41df7c743c92fc34157c7fc888bbd43ffe82b9d8a8cd"
+  digest = "1:dd2885ee8449be60c4c7cb8d9a21ec1b615a4449b463dbecadb16c1cedb0748d"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -350,7 +350,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "8a28ead16f52c8aaeffbf79239b251dfdf6c4f96"
+  revision = "d69651ed3497faee15a5363a89578e9991f6d5e2"
 
 [[projects]]
   digest = "1:a2ab62866c75542dd18d2b069fec854577a20211d7c0ea6ae746072a1dccdd18"
@@ -639,7 +639,7 @@
   name = "k8s.io/kube-openapi"
   packages = ["pkg/util/proto"]
   pruneopts = "UT"
-  revision = "90b54e673cf4f8ba61a75ad6ef90a69e8da13568"
+  revision = "0d1aeffe1c68f49accbd05c185ae534fe1372a3f"
 
 [solve-meta]
   analyzer-name = "dep"
