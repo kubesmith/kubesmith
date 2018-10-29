@@ -209,6 +209,10 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 	logger.Info("deleting pipeline stages")
 	for _, stage := range stages {
 		if err := c.kubesmithClient.PipelineStages(stage.GetNamespace()).Delete(stage.GetName(), &deleteOptions); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
 			return errors.Wrapf(err, "could not delete pipeline stage: %s/%s", stage.GetName(), stage.GetNamespace())
 		}
 	}

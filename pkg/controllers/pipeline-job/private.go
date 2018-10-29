@@ -6,7 +6,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
@@ -146,7 +148,44 @@ func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJo
 }
 
 func (c *PipelineJobController) processDeletedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing deleted pipeline job")
+	logger.Info("cleaning up pipeline job")
+
+	// create a selector for listing resources associated to pipelines
+	logger.Info("creating label selector for associated resources")
+	labelSelector, err := c.getResourceLabelSelector(c.getWrappedLabels(original))
+	if err != nil {
+		return errors.Wrap(err, "could not create label selector for pipeline")
+	}
+	logger.Info("created label selector for associated resources")
+
+	// create the delete options that can help clean everything up
+	propagationPolicy := metav1.DeletePropagationBackground
+	deleteOptions := metav1.DeleteOptions{
+		PropagationPolicy: &propagationPolicy,
+	}
+
+	// attempt to get all configmaps associated to this pipeline job
+	logger.Info("retrieving configmaps")
+	configMaps, err := c.configMapLister.ConfigMaps(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve configmaps")
+	}
+	logger.Info("retrieved configmaps")
+
+	// delete all of the configmaps associated to the pipeline job
+	logger.Info("deleting configmaps")
+	for _, configMap := range configMaps {
+		if err := c.kubeClient.CoreV1().ConfigMaps(configMap.GetNamespace()).Delete(configMap.GetName(), &deleteOptions); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
+			return errors.Wrapf(err, "could not delete pipeline stage: %s/%s", configMap.GetName(), configMap.GetNamespace())
+		}
+	}
+
+	logger.Info("deleted configmaps")
+	logger.Info("pipeline cleaned up")
 	return nil
 }
 
@@ -217,4 +256,19 @@ func (c *PipelineJobController) getWrappedLabels(original api.PipelineJob) map[s
 	labels[api.GetLabelKey("PipelineJobNamespace")] = original.GetNamespace()
 
 	return labels
+}
+
+func (c *PipelineJobController) getResourceLabelSelector(resourceLabels map[string]string) (labels.Selector, error) {
+	selector := labels.NewSelector()
+
+	for key, value := range resourceLabels {
+		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
+		if err != nil {
+			return nil, errors.Wrap(err, "could not create label requirement")
+		}
+
+		selector.Add(*req)
+	}
+
+	return selector, nil
 }
