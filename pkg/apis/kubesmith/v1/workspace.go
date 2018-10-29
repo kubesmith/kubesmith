@@ -1,8 +1,7 @@
 package v1
 
 type WorkspaceStorage struct {
-	RepoArtifactPath string             `json:"repoArtifactPath"`
-	S3               WorkspaceStorageS3 `json:"s3"`
+	S3 WorkspaceStorageS3 `json:"s3"`
 }
 
 type WorkspaceStorageS3 struct {
