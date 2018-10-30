@@ -110,7 +110,30 @@ func (c *PipelineStageController) processRunningPipelineStage(original api.Pipel
 }
 
 func (c *PipelineStageController) processSuccessfulPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing successful pipeline stage")
+	logger.Info("fetching associated pipeline")
+	pipeline, err := c.getAssociatedPipeline(original)
+	if err != nil {
+		return err
+	}
+	logger.Info("fetched associated pipeline")
+
+	if pipeline.HasSucceeded() || pipeline.HasFailed() {
+		logger.Info("pipeline has already completed; skipping")
+		return nil
+	} else if pipeline.Status.StageIndex == (len(pipeline.Spec.Jobs) + 1) {
+		logger.Info("pipeline stage index has already advanced to final stage; skipping")
+		return nil
+	}
+
+	logger.Info("incrementing pipeline stage index")
+	updatedPipeline := *pipeline.DeepCopy()
+	updatedPipeline.Status.StageIndex++
+
+	if _, err := c.patchPipeline(updatedPipeline, *pipeline); err != nil {
+		return errors.Wrap(err, "could not increment pipeline stage index")
+	}
+
+	logger.Info("incremented pipeline stage index")
 	return nil
 }
 
