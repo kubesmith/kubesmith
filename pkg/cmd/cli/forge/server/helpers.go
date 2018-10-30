@@ -115,6 +115,7 @@ func NewServer(o *Options) *Server {
 		o.kubeClient,
 		o.client.KubesmithV1(),
 		kubeInformerFactory.Batch().V1().Jobs(),
+		kubesmithInformerFactory.Kubesmith().V1().PipelineJobs(),
 	)
 
 	// finally, return the server

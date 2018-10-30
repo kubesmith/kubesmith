@@ -30,19 +30,69 @@ func (c *JobController) processJob(action sync.SyncAction) error {
 }
 
 func (c *JobController) processSuccessfulJob(original batchv1.Job, logger logrus.FieldLogger) error {
-	pipelineJobName, err := c.getPipelineJobName(original)
+	logger.Info("fetching associated pipeline job")
+	pipelineJob, err := c.getAssociatedPipelineJob(original)
 	if err != nil {
-		return errors.Wrap(err, "could not retrieve pipeline job name")
+		return err
+	}
+	logger.Info("fetched associated pipeline job")
+
+	if pipelineJob.HasSucceeded() || pipelineJob.HasFailed() {
+		logger.Info("pipeline job has already completed; skipping")
+		return nil
 	}
 
-	logger.Info("todo: processing successful job")
-	logger.Warn(pipelineJobName)
+	logger.Info("updating associated pipeline job")
+	updatedPipelineJob := *pipelineJob.DeepCopy()
+	updatedPipelineJob.SetPhaseToSucceeded()
+
+	if _, err := c.patchPipelineJob(updatedPipelineJob, *pipelineJob); err != nil {
+		return errors.Wrap(err, "could not mark pipeline job as successful")
+	}
+
+	logger.Info("updated associated pipeline job")
 	return nil
 }
 
 func (c *JobController) processFailedJob(original batchv1.Job, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing failed job")
+	logger.Info("fetching associated pipeline job")
+	pipelineJob, err := c.getAssociatedPipelineJob(original)
+	if err != nil {
+		return err
+	}
+	logger.Info("fetched associated pipeline job")
+
+	if pipelineJob.HasSucceeded() || pipelineJob.HasFailed() {
+		logger.Info("pipeline job has already completed; skipping")
+		return nil
+	}
+
+	logger.Info("updating associated pipeline job")
+	updatedPipelineJob := *pipelineJob.DeepCopy()
+
+	// todo: improve this failure reason
+	updatedPipelineJob.SetPhaseToFailed("job failed")
+
+	if _, err := c.patchPipelineJob(updatedPipelineJob, *pipelineJob); err != nil {
+		return errors.Wrap(err, "could not mark pipeline job as a failure")
+	}
+
+	logger.Info("updated associated pipeline job")
 	return nil
+}
+
+func (c *JobController) getAssociatedPipelineJob(original batchv1.Job) (*api.PipelineJob, error) {
+	name, err := c.getPipelineJobName(original)
+	if err != nil {
+		return nil, err
+	}
+
+	namespace, err := c.getPipelineJobNamespace(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.pipelineJobLister.PipelineJobs(namespace).Get(name)
 }
 
 func (c *JobController) getPipelineJobName(original batchv1.Job) (string, error) {
@@ -52,7 +102,17 @@ func (c *JobController) getPipelineJobName(original batchv1.Job) (string, error)
 		return value, nil
 	}
 
-	return "", errors.New("could not find pipeline job label")
+	return "", errors.New("could not find pipeline job name label")
+}
+
+func (c *JobController) getPipelineJobNamespace(original batchv1.Job) (string, error) {
+	labels := original.GetLabels()
+
+	if value, ok := labels[api.GetLabelKey("PipelineJobNamespace")]; ok {
+		return value, nil
+	}
+
+	return "", errors.New("could not find pipeline job namespace label")
 }
 
 func (c *JobController) jobHasWork(job *batchv1.Job) bool {
@@ -63,4 +123,13 @@ func (c *JobController) jobHasWork(job *batchv1.Job) bool {
 	_, hasLabel := labels[api.GetLabelKey("PipelineJobName")]
 
 	return !isActive && (hasSucceeded || hasFailed) && hasLabel
+}
+
+func (c *JobController) patchPipelineJob(updated, original api.PipelineJob) (*api.PipelineJob, error) {
+	patchType, patchBytes, err := updated.GetPatchFromOriginal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.kubesmithClient.PipelineJobs(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
 }

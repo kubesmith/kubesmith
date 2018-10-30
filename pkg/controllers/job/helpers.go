@@ -4,6 +4,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/typed/kubesmith/v1"
+	informers "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
@@ -18,6 +19,7 @@ func NewJobController(
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	jobInformer batchInformersv1.JobInformer,
+	pipelineJobInformer informers.PipelineJobInformer,
 ) controllers.Interface {
 	c := &JobController{
 		GenericController: generic.NewGenericController("Job"),
@@ -25,6 +27,7 @@ func NewJobController(
 		kubeClient:        kubeClient,
 		kubesmithClient:   kubesmithClient,
 		jobLister:         jobInformer.Lister(),
+		pipelineJobLister: pipelineJobInformer.Lister(),
 		clock:             &clock.RealClock{},
 	}
 
@@ -32,6 +35,7 @@ func NewJobController(
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		jobInformer.Informer().HasSynced,
+		pipelineJobInformer.Informer().HasSynced,
 	)
 
 	jobInformer.Informer().AddEventHandler(
