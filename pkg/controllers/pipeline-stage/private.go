@@ -81,6 +81,19 @@ func (c *PipelineStageController) processEmptyPhasePipelineStage(original api.Pi
 }
 
 func (c *PipelineStageController) processRunningPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
+	if len(original.Status.CompletedPipelineJobs) == len(original.Spec.Jobs) {
+		logger.Info("marking pipeline stage as succeeded")
+		updated := *original.DeepCopy()
+		updated.SetPhaseToSucceeded()
+
+		if _, err := c.patchPipelineStage(updated, original); err != nil {
+			return errors.Wrap(err, "could not mark pipeline stage as succeeded")
+		}
+
+		logger.Info("marked pipeline stage as succeeded")
+		return nil
+	}
+
 	for index, job := range original.Spec.Jobs {
 		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
 
