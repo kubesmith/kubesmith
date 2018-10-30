@@ -42,7 +42,7 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 			return c.processQueuedPipelineJob(*job.DeepCopy(), logger)
 		} else if job.IsRunning() {
 			return c.processRunningPipelineJob(*job.DeepCopy(), logger)
-		} else if job.HasSucceeded() {
+		} else if job.HasSucceeded() || (job.HasFailed() && job.Spec.Job.AllowFailure) {
 			return c.processSuccessfulPipelineJob(*job.DeepCopy(), logger)
 		} else if job.HasFailed() {
 			return c.processFailedPipelineJob(*job.DeepCopy(), logger)
@@ -115,13 +115,71 @@ func (c *PipelineJobController) processRunningPipelineJob(original api.PipelineJ
 }
 
 func (c *PipelineJobController) processSuccessfulPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing successful pipeline job")
+	logger.Info("fetching associated pipeline stage")
+	pipelineStage, err := c.getAssociatedPipelineStage(original)
+	if err != nil {
+		return err
+	}
+	logger.Info("fetched associated pipeline stage")
+
+	if pipelineStage.HasSucceeded() || pipelineStage.HasFailed() {
+		logger.Info("pipeline stage has already completed; skipping")
+		return nil
+	}
+
+	logger.Info("todo: calculate whether or not the stage is done")
 	return nil
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing failed pipeline job")
+	logger.Info("fetching associated pipeline stage")
+	pipelineStage, err := c.getAssociatedPipelineStage(original)
+	if err != nil {
+		return err
+	}
+	logger.Info("fetched associated pipeline stage")
+
+	if pipelineStage.HasSucceeded() || pipelineStage.HasFailed() {
+		logger.Info("pipeline stage has already completed; skipping")
+		return nil
+	}
+
+	logger.Info("marking pipeline stage as failed")
+	updatedPipelineJob := *pipelineStage.DeepCopy()
+
+	// todo: improve this failure reason
+	updatedPipelineJob.SetPhaseToFailed("pipeline job failed")
+
+	if _, err := c.patchPipelineStage(updatedPipelineJob, *pipelineStage); err != nil {
+		return errors.Wrap(err, "could not mark pipeline stage as failed")
+	}
+
+	logger.Info("marked pipeline stage as failed")
 	return nil
+}
+
+func (c *PipelineJobController) getAssociatedPipelineStage(original api.PipelineJob) (*api.PipelineStage, error) {
+	name, err := c.getLabelByKey(original, "PipelineStageName")
+	if err != nil {
+		return nil, err
+	}
+
+	namespace, err := c.getLabelByKey(original, "PipelineStageNamespace")
+	if err != nil {
+		return nil, err
+	}
+
+	return c.pipelineStageLister.PipelineStages(namespace).Get(name)
+}
+
+func (c *PipelineJobController) getLabelByKey(original api.PipelineJob, key string) (string, error) {
+	labels := original.GetLabels()
+
+	if value, ok := labels[api.GetLabelKey(key)]; ok {
+		return value, nil
+	}
+
+	return "", errors.New("could not find pipeline stage label")
 }
 
 func (c *PipelineJobController) processDeletedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
@@ -332,4 +390,13 @@ func (c *PipelineJobController) getResourceLabelSelector(resourceLabels map[stri
 	}
 
 	return labels.SelectorFromSet(set)
+}
+
+func (c *PipelineJobController) patchPipelineStage(updated, original api.PipelineStage) (*api.PipelineStage, error) {
+	patchType, patchBytes, err := updated.GetPatchFromOriginal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.kubesmithClient.PipelineStages(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
 }

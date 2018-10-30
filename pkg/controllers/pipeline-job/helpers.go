@@ -22,6 +22,7 @@ func NewPipelineJobController(
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
 	pipelineJobInformer informers.PipelineJobInformer,
+	pipelineStageInformer informers.PipelineStageInformer,
 	configMapInformer coreInformersv1.ConfigMapInformer,
 	jobInformer batchInformersv1.JobInformer,
 ) controllers.Interface {
@@ -32,6 +33,7 @@ func NewPipelineJobController(
 		kubeClient:             kubeClient,
 		kubesmithClient:        kubesmithClient,
 		pipelineJobLister:      pipelineJobInformer.Lister(),
+		pipelineStageLister:    pipelineStageInformer.Lister(),
 		configMapLister:        configMapInformer.Lister(),
 		jobLister:              jobInformer.Lister(),
 		clock:                  &clock.RealClock{},
@@ -41,6 +43,7 @@ func NewPipelineJobController(
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
 		pipelineJobInformer.Informer().HasSynced,
+		pipelineStageInformer.Informer().HasSynced,
 		configMapInformer.Informer().HasSynced,
 		jobInformer.Informer().HasSynced,
 	)

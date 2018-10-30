@@ -42,15 +42,15 @@ func (c *JobController) processSuccessfulJob(original batchv1.Job, logger logrus
 		return nil
 	}
 
-	logger.Info("updating associated pipeline job")
+	logger.Info("marking pipeline job as success")
 	updatedPipelineJob := *pipelineJob.DeepCopy()
 	updatedPipelineJob.SetPhaseToSucceeded()
 
 	if _, err := c.patchPipelineJob(updatedPipelineJob, *pipelineJob); err != nil {
-		return errors.Wrap(err, "could not mark pipeline job as successful")
+		return errors.Wrap(err, "could not mark pipeline job as success")
 	}
 
-	logger.Info("updated associated pipeline job")
+	logger.Info("marked pipeline job as success")
 	return nil
 }
 
@@ -67,27 +67,27 @@ func (c *JobController) processFailedJob(original batchv1.Job, logger logrus.Fie
 		return nil
 	}
 
-	logger.Info("updating associated pipeline job")
+	logger.Info("marking pipeline job as failed")
 	updatedPipelineJob := *pipelineJob.DeepCopy()
 
 	// todo: improve this failure reason
 	updatedPipelineJob.SetPhaseToFailed("job failed")
 
 	if _, err := c.patchPipelineJob(updatedPipelineJob, *pipelineJob); err != nil {
-		return errors.Wrap(err, "could not mark pipeline job as a failure")
+		return errors.Wrap(err, "could not mark pipeline job as failed")
 	}
 
-	logger.Info("updated associated pipeline job")
+	logger.Info("marked pipeline job as failed")
 	return nil
 }
 
 func (c *JobController) getAssociatedPipelineJob(original batchv1.Job) (*api.PipelineJob, error) {
-	name, err := c.getPipelineJobName(original)
+	name, err := c.getLabelByKey(original, "PipelineJobName")
 	if err != nil {
 		return nil, err
 	}
 
-	namespace, err := c.getPipelineJobNamespace(original)
+	namespace, err := c.getLabelByKey(original, "PipelineJobNamespace")
 	if err != nil {
 		return nil, err
 	}
@@ -95,24 +95,14 @@ func (c *JobController) getAssociatedPipelineJob(original batchv1.Job) (*api.Pip
 	return c.pipelineJobLister.PipelineJobs(namespace).Get(name)
 }
 
-func (c *JobController) getPipelineJobName(original batchv1.Job) (string, error) {
+func (c *JobController) getLabelByKey(original batchv1.Job, key string) (string, error) {
 	labels := original.GetLabels()
 
-	if value, ok := labels[api.GetLabelKey("PipelineJobName")]; ok {
+	if value, ok := labels[api.GetLabelKey(key)]; ok {
 		return value, nil
 	}
 
-	return "", errors.New("could not find pipeline job name label")
-}
-
-func (c *JobController) getPipelineJobNamespace(original batchv1.Job) (string, error) {
-	labels := original.GetLabels()
-
-	if value, ok := labels[api.GetLabelKey("PipelineJobNamespace")]; ok {
-		return value, nil
-	}
-
-	return "", errors.New("could not find pipeline job namespace label")
+	return "", errors.New("could not find pipeline job label")
 }
 
 func (c *JobController) jobHasWork(job *batchv1.Job) bool {

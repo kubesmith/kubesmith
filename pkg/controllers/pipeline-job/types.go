@@ -19,8 +19,9 @@ type PipelineJobController struct {
 	kubeClient             kubernetes.Interface
 	kubesmithClient        kubesmithv1.KubesmithV1Interface
 
-	pipelineJobLister kubesmithListersv1.PipelineJobLister
-	configMapLister   coreListersv1.ConfigMapLister
-	jobLister         batchListersv1.JobLister
-	clock             clock.Clock
+	pipelineJobLister   kubesmithListersv1.PipelineJobLister
+	pipelineStageLister kubesmithListersv1.PipelineStageLister
+	configMapLister     coreListersv1.ConfigMapLister
+	jobLister           batchListersv1.JobLister
+	clock               clock.Clock
 }
