@@ -615,6 +615,13 @@ func (in *PipelineStageStatus) DeepCopyInto(out *PipelineStageStatus) {
 	in.StartTime.DeepCopyInto(&out.StartTime)
 	in.EndTime.DeepCopyInto(&out.EndTime)
 	in.LastUpdatedTime.DeepCopyInto(&out.LastUpdatedTime)
+	if in.CompletedPipelineJobs != nil {
+		in, out := &in.CompletedPipelineJobs, &out.CompletedPipelineJobs
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

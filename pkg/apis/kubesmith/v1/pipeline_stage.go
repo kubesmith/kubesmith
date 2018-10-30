@@ -16,11 +16,12 @@ type PipelineStageSpec struct {
 }
 
 type PipelineStageStatus struct {
-	Phase           Phase       `json:"phase"`
-	StartTime       metav1.Time `json:"startTime"`
-	EndTime         metav1.Time `json:"endTime"`
-	LastUpdatedTime metav1.Time `json:"lastUpdatedTime"`
-	FailureReason   string      `json:"failureReason"`
+	Phase                 Phase             `json:"phase"`
+	StartTime             metav1.Time       `json:"startTime"`
+	EndTime               metav1.Time       `json:"endTime"`
+	LastUpdatedTime       metav1.Time       `json:"lastUpdatedTime"`
+	FailureReason         string            `json:"failureReason"`
+	CompletedPipelineJobs map[string]string `json:"completedPipelineJobs"`
 }
 
 type PipelineStageWorkspace struct {

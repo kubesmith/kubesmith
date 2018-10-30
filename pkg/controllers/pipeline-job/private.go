@@ -1,6 +1,8 @@
 package pipelinejob
 
 import (
+	"fmt"
+
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
 	"github.com/pkg/errors"
@@ -127,8 +129,27 @@ func (c *PipelineJobController) processSuccessfulPipelineJob(original api.Pipeli
 		return nil
 	}
 
-	logger.Info("todo: calculate whether or not the stage is done")
+	// stuff an entry into the pipeline stage for this job
+	logger.Info("adding pipeline job completion to pipeline stage")
+	updatedPipelineStage := c.markPipelineJobAsCompleted(original, *pipelineStage.DeepCopy(), api.PhaseSucceeded)
+
+	if _, err := c.patchPipelineStage(updatedPipelineStage, *pipelineStage); err != nil {
+		return errors.Wrap(err, "could not add pipeline job completion to pipeline stage")
+	}
+
+	logger.Info("added pipeline job completion to pipeline stage")
 	return nil
+}
+
+func (c *PipelineJobController) markPipelineJobAsCompleted(pipelineJob api.PipelineJob, pipelineStage api.PipelineStage, phase api.Phase) api.PipelineStage {
+	key := fmt.Sprintf("%s/%s", pipelineJob.GetNamespace(), pipelineJob.GetName())
+
+	if pipelineStage.Status.CompletedPipelineJobs == nil {
+		pipelineStage.Status.CompletedPipelineJobs = map[string]string{}
+	}
+
+	pipelineStage.Status.CompletedPipelineJobs[key] = string(phase)
+	return pipelineStage
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
@@ -149,12 +170,12 @@ func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJo
 	}
 
 	logger.Info("marking pipeline stage as failed")
-	updatedPipelineJob := *pipelineStage.DeepCopy()
+	updatedPipelineStage := c.markPipelineJobAsCompleted(original, *pipelineStage.DeepCopy(), api.PhaseFailed)
 
 	// todo: improve this failure reason
-	updatedPipelineJob.SetPhaseToFailed("pipeline job failed")
+	updatedPipelineStage.SetPhaseToFailed("pipeline job failed")
 
-	if _, err := c.patchPipelineStage(updatedPipelineJob, *pipelineStage); err != nil {
+	if _, err := c.patchPipelineStage(updatedPipelineStage, *pipelineStage); err != nil {
 		return errors.Wrap(err, "could not mark pipeline stage as failed")
 	}
 
