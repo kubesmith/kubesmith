@@ -397,7 +397,7 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 			)
 
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
-				return errors.Wrap(err, "could not create clone repo job")
+				return errors.Wrap(err, "could not schedule clone repo job")
 			}
 
 			logger.Info("clone repo job is now scheduled")
@@ -457,7 +457,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 
 			pipelineStage := GetPipelineStage(
 				name,
-				original.Spec.Workspace.Repo,
+				original.GetWorkspacePath(),
 				original.Spec.Workspace.Storage,
 				c.getWrappedLabels(original),
 				original.GetExpandedJobsForCurrentStage(),

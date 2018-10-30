@@ -126,14 +126,6 @@ func (p *Pipeline) GetWorkspacePath() string {
 	return path
 }
 
-func (p *PipelineSpecJob) GetCommand() []string {
-	if len(p.Command) > 0 {
-		return p.Command
-	}
-
-	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
-}
-
 func (p *PipelineSpecJob) GetConfigMapData() map[string]string {
 	if len(p.ConfigMapData) > 0 {
 		return p.ConfigMapData

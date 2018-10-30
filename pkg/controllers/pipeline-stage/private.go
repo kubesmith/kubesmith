@@ -186,8 +186,8 @@ func (c *PipelineStageController) ensureJobIsScheduled(
 
 			job := GetPipelineJob(
 				name,
+				original.Spec.Workspace.Path,
 				c.getWrappedLabels(original),
-				original.Spec.Workspace.Repo,
 				original.Spec.Workspace.Storage,
 				job,
 			)

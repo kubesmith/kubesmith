@@ -118,15 +118,7 @@ func (c *PipelineJobController) processQueuedPipelineJob(original api.PipelineJo
 }
 
 func (c *PipelineJobController) processRunningPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
-	err := c.ensureJobConfigMapIsScheduled(
-		original.GetName(),
-		original.GetNamespace(),
-		c.getWrappedLabels(original),
-		original.GetConfigMapData(),
-		logger,
-	)
-
-	if err != nil {
+	if err := c.ensureJobConfigMapIsScheduled(original, logger); err != nil {
 		return errors.Wrap(err, "could not ensure job configmap is scheduled")
 	}
 
@@ -218,14 +210,19 @@ func (c *PipelineJobController) canRunAnotherPipelineJob(original api.PipelineJo
 	return false, nil
 }
 
-func (c *PipelineJobController) ensureJobConfigMapIsScheduled(name, namespace string, labels, configMapData map[string]string, logger logrus.FieldLogger) error {
+func (c *PipelineJobController) ensureJobConfigMapIsScheduled(original api.PipelineJob, logger logrus.FieldLogger) error {
 	logger.Info("ensuring job configmap is scheduled")
-	if _, err := c.configMapLister.ConfigMaps(namespace).Get(name); err != nil {
+	if _, err := c.configMapLister.ConfigMaps(original.GetNamespace()).Get(original.GetName()); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("job configmap does not exist; scheduling")
 
-			configMap := GetJobConfigMap(name, labels, configMapData)
-			if _, err := c.kubeClient.CoreV1().ConfigMaps(namespace).Create(&configMap); err != nil {
+			configMap := GetJobConfigMap(
+				original.GetName(),
+				c.getWrappedLabels(original),
+				original.GetConfigMapData(),
+			)
+
+			if _, err := c.kubeClient.CoreV1().ConfigMaps(original.GetNamespace()).Create(&configMap); err != nil {
 				return errors.Wrap(err, "could not schedule job configmap")
 			}
 
@@ -242,8 +239,40 @@ func (c *PipelineJobController) ensureJobConfigMapIsScheduled(name, namespace st
 
 func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, logger logrus.FieldLogger) error {
 	logger.Info("ensuring job is scheduled")
+	if _, err := c.jobLister.Jobs(original.GetNamespace()).Get(original.GetName()); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("job does not exist; scheduling")
 
-	// todo: left off here
+			command := original.Spec.Job.Command
+			args := original.Spec.Job.Args
+
+			if len(original.Spec.Job.Runner) > 0 {
+				// runner trumps all
+				command = []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
+				args = []string{}
+			}
+
+			job := GetJob(
+				original.GetName(),
+				original.Spec.Job.Image,
+				original.Spec.Workspace.Path,
+				command,
+				args,
+				original.Spec.Workspace.Storage.S3,
+				original.Spec.Job.Environment,
+				c.getWrappedLabels(original),
+			)
+
+			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
+				return errors.Wrap(err, "could not schedule job")
+			}
+
+			logger.Info("job is scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get job")
+	}
 
 	logger.Info("job is scheduled")
 	return nil

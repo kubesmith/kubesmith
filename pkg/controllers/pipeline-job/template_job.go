@@ -27,7 +27,7 @@ func GetJob(
 	name, image, repoPath string,
 	command, args []string,
 	s3Config api.WorkspaceStorageS3,
-	annotations, environment, labels map[string]string,
+	environment, labels map[string]string,
 ) batchv1.Job {
 	s3UseSSL := "false"
 	if s3Config.UseSSL == true {
@@ -36,9 +36,8 @@ func GetJob(
 
 	return batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
-			Labels:      labels,
-			Annotations: annotations,
+			Name:   name,
+			Labels: labels,
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit: utils.Int32Ptr(0),
@@ -55,7 +54,7 @@ func GetJob(
 							Env: []corev1.EnvVar{
 								corev1.EnvVar{
 									Name:  "S3_HOST",
-									Value: repoPath,
+									Value: s3Config.Host,
 								},
 								corev1.EnvVar{
 									Name:  "S3_PORT",

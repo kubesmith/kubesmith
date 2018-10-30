@@ -29,7 +29,7 @@ type PipelineJobSpecJob struct {
 }
 
 type PipelineJobWorkspace struct {
-	Repo    WorkspaceRepo    `json:"repo"`
+	Path    string           `json:"path"`
 	Storage WorkspaceStorage `json:"storage"`
 }
 
@@ -62,14 +62,6 @@ type PipelineJobList struct {
 }
 
 // helpers
-
-func (p *PipelineJob) GetCommand() []string {
-	if len(p.Spec.Job.Command) > 0 {
-		return p.Spec.Job.Command
-	}
-
-	return []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
-}
 
 func (p *PipelineJob) GetConfigMapData() map[string]string {
 	if len(p.Spec.Job.ConfigMapData) > 0 {
