@@ -96,6 +96,7 @@ func NewServer(o *Options) *Server {
 		logger,
 		o.kubeClient,
 		o.client.KubesmithV1(),
+		kubesmithInformerFactory.Kubesmith().V1().Pipelines(),
 		kubesmithInformerFactory.Kubesmith().V1().PipelineStages(),
 		kubesmithInformerFactory.Kubesmith().V1().PipelineJobs(),
 	)

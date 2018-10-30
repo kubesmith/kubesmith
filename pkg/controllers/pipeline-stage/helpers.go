@@ -18,6 +18,7 @@ func NewPipelineStageController(
 	logger *logrus.Logger,
 	kubeClient kubernetes.Interface,
 	kubesmithClient kubesmithv1.KubesmithV1Interface,
+	pipelineInformer informers.PipelineInformer,
 	pipelineStageInformer informers.PipelineStageInformer,
 	pipelineJobInformer informers.PipelineJobInformer,
 ) controllers.Interface {
@@ -26,6 +27,7 @@ func NewPipelineStageController(
 		logger:              logger.WithField("controller", "PipelineStage"),
 		kubeClient:          kubeClient,
 		kubesmithClient:     kubesmithClient,
+		pipelineLister:      pipelineInformer.Lister(),
 		pipelineStageLister: pipelineStageInformer.Lister(),
 		pipelineJobLister:   pipelineJobInformer.Lister(),
 		clock:               &clock.RealClock{},
@@ -34,6 +36,7 @@ func NewPipelineStageController(
 	c.SyncHandler = c.processPipelineStage
 	c.CacheSyncWaiters = append(
 		c.CacheSyncWaiters,
+		pipelineInformer.Informer().HasSynced,
 		pipelineStageInformer.Informer().HasSynced,
 		pipelineJobInformer.Informer().HasSynced,
 	)

@@ -102,7 +102,7 @@ func (c *JobController) getLabelByKey(original batchv1.Job, key string) (string,
 		return value, nil
 	}
 
-	return "", errors.New("could not find pipeline job label")
+	return "", errors.New("could not find job label")
 }
 
 func (c *JobController) jobHasWork(job *batchv1.Job) bool {

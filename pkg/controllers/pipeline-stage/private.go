@@ -115,8 +115,54 @@ func (c *PipelineStageController) processSuccessfulPipelineStage(original api.Pi
 }
 
 func (c *PipelineStageController) processFailedPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
-	logger.Info("todo: processing failed pipeline stage")
+	logger.Info("fetching associated pipeline")
+	pipeline, err := c.getAssociatedPipeline(original)
+	if err != nil {
+		return err
+	}
+	logger.Info("fetched associated pipeline")
+
+	if pipeline.HasSucceeded() || pipeline.HasFailed() {
+		logger.Info("pipeline has already completed; skipping")
+		return nil
+	}
+
+	logger.Info("marking pipeline as failed")
+	updatedPipeline := *pipeline.DeepCopy()
+
+	// todo: improve this failure reason
+	updatedPipeline.SetPhaseToFailed("pipeline stage failed")
+
+	if _, err := c.patchPipeline(updatedPipeline, *pipeline); err != nil {
+		return errors.Wrap(err, "could not mark pipeline as failed")
+	}
+
+	logger.Info("marked pipeline as failed")
 	return nil
+}
+
+func (c *PipelineStageController) getAssociatedPipeline(original api.PipelineStage) (*api.Pipeline, error) {
+	name, err := c.getLabelByKey(original, "PipelineName")
+	if err != nil {
+		return nil, err
+	}
+
+	namespace, err := c.getLabelByKey(original, "PipelineNamespace")
+	if err != nil {
+		return nil, err
+	}
+
+	return c.pipelineLister.Pipelines(namespace).Get(name)
+}
+
+func (c *PipelineStageController) getLabelByKey(original api.PipelineStage, key string) (string, error) {
+	labels := original.GetLabels()
+
+	if value, ok := labels[api.GetLabelKey(key)]; ok {
+		return value, nil
+	}
+
+	return "", errors.New("could not find pipeline stage label")
 }
 
 func (c *PipelineStageController) processDeletedPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
@@ -233,4 +279,13 @@ func (c *PipelineStageController) getResourceLabelSelector(resourceLabels map[st
 	}
 
 	return labels.SelectorFromSet(set)
+}
+
+func (c *PipelineStageController) patchPipeline(updated, original api.Pipeline) (*api.Pipeline, error) {
+	patchType, patchBytes, err := updated.GetPatchFromOriginal(original)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.kubesmithClient.Pipelines(original.GetNamespace()).Patch(original.GetName(), patchType, patchBytes)
 }

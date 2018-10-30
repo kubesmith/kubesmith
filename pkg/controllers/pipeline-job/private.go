@@ -204,7 +204,7 @@ func (c *PipelineJobController) getLabelByKey(original api.PipelineJob, key stri
 		return value, nil
 	}
 
-	return "", errors.New("could not find pipeline stage label")
+	return "", errors.New("could not find pipeline job label")
 }
 
 func (c *PipelineJobController) processDeletedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
