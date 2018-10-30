@@ -29,6 +29,8 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("s3-secret-key", flags)
 	flags.StringVar(&o.S3.BucketName, "s3-bucket-name", "artifacts", "The s3 bucket where the archive of artifacts will be uploaded to")
 	env.BindEnvToFlag("s3-bucket-name", flags)
+	flags.StringVar(&o.S3.Path, "s3-path", "", "The s3 path (inside the specified bucket) where the archive of artifacts will be uploaded to")
+	env.BindEnvToFlag("s3-path", flags)
 	flags.BoolVar(&o.S3.UseSSL, "s3-use-ssl", true, "Indicates whether to use SSL when connecting to the s3 server")
 	env.BindEnvToFlag("s3-use-ssl", flags)
 	flags.StringVar(&o.FlagFile.Path, "flag-file-path", "", "The file anvil will watch for until it exists")
@@ -126,7 +128,7 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 
 	// upload the compressed tarball to s3
 	glog.V(1).Info("Compressed tarball; Uploading to S3...")
-	if err := o.S3.client.UploadFileToBucket(filePath, o.S3.BucketName); err != nil {
+	if err := o.S3.client.UploadFileToBucket(filePath, o.S3.BucketName, o.S3.Path); err != nil {
 		glog.V(1).Info("Could not upload artifacts to S3...")
 		glog.Exit(err)
 	}

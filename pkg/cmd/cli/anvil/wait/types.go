@@ -15,6 +15,7 @@ type OptionsS3 struct {
 	AccessKey  string
 	SecretKey  string
 	BucketName string
+	Path       string
 	UseSSL     bool
 
 	client *s3.S3Client
