@@ -10,7 +10,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) error {
@@ -119,12 +118,7 @@ func (c *PipelineStageController) processFailedPipelineStage(original api.Pipeli
 
 func (c *PipelineStageController) processDeletedPipelineStage(original api.PipelineStage, logger logrus.FieldLogger) error {
 	// create a selector for listing resources associated to pipeline stage
-	logger.Info("creating label selector for associated resources")
-	labelSelector, err := c.getResourceLabelSelector(c.getWrappedLabels(original))
-	if err != nil {
-		return errors.Wrap(err, "could not create label selector for pipeline")
-	}
-	logger.Info("created label selector for associated resources")
+	labelSelector := c.getResourceLabelSelector(c.getWrappedLabels(original))
 
 	// create the delete options that can help clean everything up
 	propagationPolicy := metav1.DeletePropagationBackground
@@ -210,17 +204,12 @@ func (c *PipelineStageController) cleanupJob(name string) error {
 	return nil
 }
 
-func (c *PipelineStageController) getResourceLabelSelector(resourceLabels map[string]string) (labels.Selector, error) {
-	selector := labels.NewSelector()
+func (c *PipelineStageController) getResourceLabelSelector(resourceLabels map[string]string) labels.Selector {
+	set := labels.Set{}
 
 	for key, value := range resourceLabels {
-		req, err := labels.NewRequirement(key, selection.Equals, []string{value})
-		if err != nil {
-			return nil, errors.Wrap(err, "could not create label requirement")
-		}
-
-		selector.Add(*req)
+		set[key] = value
 	}
 
-	return selector, nil
+	return labels.SelectorFromSet(set)
 }
