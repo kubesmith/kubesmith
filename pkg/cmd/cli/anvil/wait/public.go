@@ -45,6 +45,8 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("archive-file-name", flags)
 	flags.StringVar(&o.ArchiveFile.Path, "archive-file-path", os.TempDir(), "The directory where the compressed file will be created if artifacts are found")
 	env.BindEnvToFlag("archive-file-path", flags)
+	flags.BoolVar(&o.ErrorWithoutArtifacts, "error-without-artifacts", false, "Indicates whether we should exit with code 1 when artifacts aren't found or not")
+	env.BindEnvToFlag("error-without-artifacts", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
@@ -115,7 +117,13 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 	// detect any artifacts that were expected to be created
 	detectedArtifacts := artifacts.DetectFromCSV(o.ArtifactPaths)
 	if len(detectedArtifacts) == 0 {
-		glog.Exitln("No artifacts were detected before the timeout ...")
+		glog.V(1).Info("No artifacts were detected before the timeout ...")
+
+		if o.ErrorWithoutArtifacts {
+			os.Exit(1)
+		}
+
+		os.Exit(0)
 	}
 
 	// compress all of the files into a tarball

@@ -26,7 +26,7 @@ metadata:
     app: anvil-test
     role: example-workload-3
 spec:
-  backoffLimit: 1
+  backoffLimit: 0
   template:
     spec:
       restartPolicy: Never

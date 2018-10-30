@@ -3,10 +3,11 @@ package wait
 import "github.com/kubesmith/kubesmith/pkg/s3"
 
 type Options struct {
-	S3            OptionsS3
-	FlagFile      OptionsFlagFile
-	ArtifactPaths string
-	ArchiveFile   OptionsArchiveFile
+	S3                    OptionsS3
+	FlagFile              OptionsFlagFile
+	ArtifactPaths         string
+	ArchiveFile           OptionsArchiveFile
+	ErrorWithoutArtifacts bool
 }
 
 type OptionsS3 struct {
