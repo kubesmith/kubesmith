@@ -17,7 +17,7 @@ func (s3 *S3Client) UploadFileToBucket(filePath, bucketName, remotePath string) 
 
 	_, err := s3.client.FPutObject(
 		bucketName,
-		strings.TrimLeft(fmt.Sprintf("%s/%s", remotePath, path.Base(filePath)), "/"),
+		strings.TrimLeft(fmt.Sprintf("%s/%s", strings.Trim(remotePath, "/"), path.Base(filePath)), "/"),
 		filePath,
 		minio.PutObjectOptions{
 			ContentType: s3.getFileType(filePath),
