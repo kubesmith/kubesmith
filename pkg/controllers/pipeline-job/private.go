@@ -150,28 +150,85 @@ func (c *PipelineJobController) processDeletedPipelineJob(original api.PipelineJ
 		PropagationPolicy: &propagationPolicy,
 	}
 
-	// attempt to get all configmaps associated to this pipeline job
+	if err := c.deleteAssociatedConfigMaps(original, labelSelector, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	if err := c.deleteAssociatedJobs(original, labelSelector, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	logger.Info("pipeline cleaned up")
+	return nil
+}
+
+func (c *PipelineJobController) deleteAssociatedConfigMaps(
+	original api.PipelineJob,
+	labelSelector labels.Selector,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
 	logger.Info("retrieving configmaps")
 	configMaps, err := c.configMapLister.ConfigMaps(original.GetNamespace()).List(labelSelector)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve configmaps")
 	}
+
 	logger.Info("retrieved configmaps")
 
 	// delete all of the configmaps associated to the pipeline job
 	logger.Info("deleting configmaps")
 	for _, configMap := range configMaps {
+		logger.WithFields(logrus.Fields{
+			"ConfigMapName":      configMap.GetName(),
+			"ConfigMapNamespace": configMap.GetNamespace(),
+		}).Info("deleting configmap")
+
 		if err := c.kubeClient.CoreV1().ConfigMaps(configMap.GetNamespace()).Delete(configMap.GetName(), &deleteOptions); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
 			}
 
-			return errors.Wrapf(err, "could not delete pipeline stage: %s/%s", configMap.GetName(), configMap.GetNamespace())
+			return errors.Wrapf(err, "could not delete configmap: %s/%s", configMap.GetNamespace(), configMap.GetName())
 		}
 	}
 
 	logger.Info("deleted configmaps")
-	logger.Info("pipeline cleaned up")
+	return nil
+}
+
+func (c *PipelineJobController) deleteAssociatedJobs(
+	original api.PipelineJob,
+	labelSelector labels.Selector,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
+	logger.Info("retrieving jobs")
+	jobs, err := c.jobLister.Jobs(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve jobs")
+	}
+
+	logger.Info("retrieved jobs")
+
+	// delete all of the configmaps associated to the pipeline job
+	logger.Info("deleting jobs")
+	for _, job := range jobs {
+		logger.WithFields(logrus.Fields{
+			"JobName":      job.GetName(),
+			"JobNamespace": job.GetNamespace(),
+		}).Info("deleting job")
+
+		if err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
+			if apierrors.IsNotFound(err) {
+				continue
+			}
+
+			return errors.Wrapf(err, "could not delete job: %s/%s", job.GetNamespace(), job.GetName())
+		}
+	}
+
+	logger.Info("deleted jobs")
 	return nil
 }
 

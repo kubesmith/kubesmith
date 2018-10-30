@@ -126,23 +126,41 @@ func (c *PipelineStageController) processDeletedPipelineStage(original api.Pipel
 		PropagationPolicy: &propagationPolicy,
 	}
 
-	// attempt to get all pipeline stages associated to the pipeline
+	if err := c.deleteAssociatedPipelineJobs(original, labelSelector, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *PipelineStageController) deleteAssociatedPipelineJobs(
+	original api.PipelineStage,
+	labelSelector labels.Selector,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
 	logger.Info("retrieving pipeline jobs")
 	jobs, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).List(labelSelector)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve pipeline jobs")
 	}
+
 	logger.Info("retrieved pipeline jobs")
 
 	// delete all of the pipeline jobs associated to the pipeline
 	logger.Info("deleting pipeline jobs")
 	for _, job := range jobs {
+		logger.WithFields(logrus.Fields{
+			"PipelineJobName":      job.GetName(),
+			"PipelineJobNamespace": job.GetNamespace(),
+		}).Info("deleting pipeline job")
+
 		if err := c.kubesmithClient.PipelineJobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
 			}
 
-			return errors.Wrapf(err, "could not delete pipeline job: %s/%s", job.GetName(), job.GetNamespace())
+			return errors.Wrapf(err, "could not delete pipeline job: %s/%s", job.GetNamespace(), job.GetName())
 		}
 	}
 

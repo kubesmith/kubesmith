@@ -191,17 +191,71 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 		PropagationPolicy: &propagationPolicy,
 	}
 
-	// attempt to get all pipeline stages associated to the pipeline
+	if err := c.deleteAssociatedPipelineStages(original, labelSelector, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	if err := c.deleteAssociatedJobs(original, labelSelector, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	logger.Info("pipeline cleaned up")
+	return nil
+}
+
+func (c *PipelineController) deleteAssociatedJobs(
+	original api.Pipeline,
+	labelSelector labels.Selector,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
+	logger.Info("retrieving jobs")
+	jobs, err := c.jobLister.Jobs(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve jobs")
+	}
+
+	logger.Info("retrieved jobs")
+
+	// delete all of the jobs associated to the pipeline
+	logger.Info("deleting jobs")
+	for _, job := range jobs {
+		logger.WithFields(logrus.Fields{
+			"JobName":      job.GetName(),
+			"JobNamespace": job.GetNamespace(),
+		}).Info("deleting job")
+
+		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
+			return errors.Wrapf(err, "could not delete job: %s/%s", job.GetName(), job.GetNamespace())
+		}
+	}
+
+	logger.Info("deleted jobs")
+	return nil
+}
+
+func (c *PipelineController) deleteAssociatedPipelineStages(
+	original api.Pipeline,
+	labelSelector labels.Selector,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
 	logger.Info("retrieving pipeline stages")
 	stages, err := c.pipelineStageLister.PipelineStages(original.GetNamespace()).List(labelSelector)
 	if err != nil {
 		return errors.Wrap(err, "could not retrieve pipeline stages")
 	}
+
 	logger.Info("retrieved pipeline stages")
 
 	// delete all of the pipeline stages associated to the pipeline
 	logger.Info("deleting pipeline stages")
 	for _, stage := range stages {
+		logger.WithFields(logrus.Fields{
+			"PipelineStageName":      stage.GetName(),
+			"PipelineStageNamespace": stage.GetNamespace(),
+		}).Info("deleting pipeline stage")
+
 		if err := c.kubesmithClient.PipelineStages(stage.GetNamespace()).Delete(stage.GetName(), &deleteOptions); err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -210,26 +264,8 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 			return errors.Wrapf(err, "could not delete pipeline stage: %s/%s", stage.GetName(), stage.GetNamespace())
 		}
 	}
+
 	logger.Info("deleted pipeline stages")
-
-	// attempt to get all jobs associated to the pipeline
-	logger.Info("retrieving jobs")
-	jobs, err := c.jobLister.Jobs(original.GetNamespace()).List(labelSelector)
-	if err != nil {
-		return errors.Wrap(err, "could not retrieve jobs")
-	}
-	logger.Info("retrieved jobs")
-
-	// delete all of the jobs associated to the pipeline
-	logger.Info("deleting jobs")
-	for _, job := range jobs {
-		if err := c.kubeClient.BatchV1().Jobs(job.GetNamespace()).Delete(job.GetName(), &deleteOptions); err != nil {
-			return errors.Wrapf(err, "could not delete job: %s/%s", job.GetName(), job.GetNamespace())
-		}
-	}
-
-	logger.Info("deleted jobs")
-	logger.Info("pipeline cleaned up")
 	return nil
 }
 
