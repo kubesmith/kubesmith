@@ -16,7 +16,9 @@ pipeline:
     - "dep ensure"
     - "dep status"
     when:
-      event: tag
+      event:
+      - tag
+      - push
       branch: master
 
   build-kubesmith-linux:
