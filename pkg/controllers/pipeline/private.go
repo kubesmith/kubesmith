@@ -110,6 +110,19 @@ func (c *PipelineController) processQueuedPipeline(original api.Pipeline, logger
 }
 
 func (c *PipelineController) processRunningPipeline(original api.Pipeline, logger logrus.FieldLogger) error {
+	if original.Status.StageIndex > len(original.Spec.Jobs) {
+		logger.Info("marking pipeline as succceeded")
+		pipeline := *original.DeepCopy()
+		pipeline.SetPhaseToSucceeded()
+
+		if _, err := c.patchPipeline(pipeline, original); err != nil {
+			return errors.Wrap(err, "could not mark pipeline as succeeded")
+		}
+
+		logger.Info("marked pipeline as succeeded")
+		return nil
+	}
+
 	if c.pipelineNeedsMinio(original) == true {
 		minioServer, err := c.ensureMinioServerIsRunning(original, logger)
 		if err != nil {
@@ -117,20 +130,7 @@ func (c *PipelineController) processRunningPipeline(original api.Pipeline, logge
 		}
 
 		logger.Info("updating pipeline with minio storage configuration")
-		pipeline := *original.DeepCopy()
-
-		host, err := minioServer.GetServiceHost()
-		if err != nil {
-			return errors.Wrap(err, "could not get minio service host")
-		}
-
-		pipeline.Spec.Workspace.Storage.S3.Host = host
-		pipeline.Spec.Workspace.Storage.S3.Port = minio.MINIO_DEFAULT_PORT
-		pipeline.Spec.Workspace.Storage.S3.UseSSL = false
-		pipeline.Spec.Workspace.Storage.S3.BucketName = minioServer.GetBucketName()
-		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.Name = minioServer.GetResourceName()
-		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey = minio.MINIO_DEFAULT_ACCESS_KEY_KEY
-		pipeline.Spec.Workspace.Storage.S3.Credentials.Secret.SecretKeyKey = minio.MINIO_DEFAULT_SECRET_KEY_KEY
+		pipeline := c.setMinioInfoForPipeline(*original.DeepCopy(), minioServer)
 
 		updated, err := c.patchPipeline(pipeline, original)
 		if err != nil {
@@ -150,6 +150,19 @@ func (c *PipelineController) processRunningPipeline(original api.Pipeline, logge
 	}
 
 	return nil
+}
+
+func (c *PipelineController) setMinioInfoForPipeline(original api.Pipeline, minioServer *minio.MinioServer) api.Pipeline {
+	host, _ := minioServer.GetServiceHost()
+	original.Spec.Workspace.Storage.S3.Host = host
+	original.Spec.Workspace.Storage.S3.Port = minio.MINIO_DEFAULT_PORT
+	original.Spec.Workspace.Storage.S3.UseSSL = false
+	original.Spec.Workspace.Storage.S3.BucketName = minioServer.GetBucketName()
+	original.Spec.Workspace.Storage.S3.Credentials.Secret.Name = minioServer.GetResourceName()
+	original.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey = minio.MINIO_DEFAULT_ACCESS_KEY_KEY
+	original.Spec.Workspace.Storage.S3.Credentials.Secret.SecretKeyKey = minio.MINIO_DEFAULT_SECRET_KEY_KEY
+
+	return original
 }
 
 func (c *PipelineController) processSuccessfulPipeline(original api.Pipeline, logger logrus.FieldLogger) error {
