@@ -32,7 +32,9 @@ pipeline:
     - printenv LDFLAGS
     - go build -a -installsuffix cgo -ldflags "$LDFLAGS" -o kubesmith ./cmd/kubesmith/main.go
     when:
-      event: tag
+      event:
+      - tag
+      - push
       branch: master
 
   dockerize-kubesmith:
@@ -41,6 +43,8 @@ pipeline:
     auto_tag: true
     dockerfile: cmd/kubesmith/Dockerfile
     when:
-      event: tag
+      event:
+      - tag
+      - push
       branch: master
     secrets: [ docker_username, docker_password ]
