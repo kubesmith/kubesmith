@@ -21,9 +21,7 @@ func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) e
 			"Name": cachedStage.GetName(),
 		})
 
-		if err := c.processDeletedPipelineStage(*cachedStage.DeepCopy(), logger); err != nil {
-			return err
-		}
+		return c.processDeletedPipelineStage(*cachedStage.DeepCopy(), logger)
 	default:
 		stage, err := c.pipelineStageLister.PipelineStages(cachedStage.GetNamespace()).Get(cachedStage.GetName())
 		if apierrors.IsNotFound(err) {
@@ -41,21 +39,13 @@ func (c *PipelineStageController) processPipelineStage(action sync.SyncAction) e
 
 		// determine the phase and begin execution of the pipeline stage
 		if stage.HasNoPhase() {
-			if err := c.processEmptyPhasePipelineStage(*stage.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processEmptyPhasePipelineStage(*stage.DeepCopy(), logger)
 		} else if stage.IsRunning() {
-			if err := c.processRunningPipelineStage(*stage.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processRunningPipelineStage(*stage.DeepCopy(), logger)
 		} else if stage.HasSucceeded() {
-			if err := c.processSuccessfulPipelineStage(*stage.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processSuccessfulPipelineStage(*stage.DeepCopy(), logger)
 		} else if stage.HasFailed() {
-			if err := c.processFailedPipelineStage(*stage.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processFailedPipelineStage(*stage.DeepCopy(), logger)
 		}
 
 		break

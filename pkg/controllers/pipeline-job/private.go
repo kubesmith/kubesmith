@@ -19,9 +19,7 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 			"Name": cachedJob.GetName(),
 		})
 
-		if err := c.processDeletedPipelineJob(*cachedJob.DeepCopy(), logger); err != nil {
-			return err
-		}
+		return c.processDeletedPipelineJob(*cachedJob.DeepCopy(), logger)
 	default:
 		job, err := c.pipelineJobLister.PipelineJobs(cachedJob.GetNamespace()).Get(cachedJob.GetName())
 		if apierrors.IsNotFound(err) {
@@ -39,28 +37,16 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 
 		// determine the phase and begin execution of the pipeline job
 		if job.HasNoPhase() {
-			if err := c.processEmptyPhasePipelineJob(*job.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processEmptyPhasePipelineJob(*job.DeepCopy(), logger)
 		} else if job.IsQueued() {
-			if err := c.processQueuedPipelineJob(*job.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processQueuedPipelineJob(*job.DeepCopy(), logger)
 		} else if job.IsRunning() {
-			if err := c.processRunningPipelineJob(*job.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processRunningPipelineJob(*job.DeepCopy(), logger)
 		} else if job.HasSucceeded() {
-			if err := c.processSuccessfulPipelineJob(*job.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processSuccessfulPipelineJob(*job.DeepCopy(), logger)
 		} else if job.HasFailed() {
-			if err := c.processFailedPipelineJob(*job.DeepCopy(), logger); err != nil {
-				return err
-			}
+			return c.processFailedPipelineJob(*job.DeepCopy(), logger)
 		}
-
-		break
 	}
 
 	return nil
