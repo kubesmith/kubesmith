@@ -38,7 +38,7 @@ spec:
       restartPolicy: Never
       initContainers:
       - name: anvil-extract
-        image: kubesmith/kubesmith:0.1
+        image: kubesmith/kubesmith
         imagePullPolicy: Always
         command: ['kubesmith', 'anvil', 'extract', '--logtostderr', '-v', '2']
         env:
@@ -79,7 +79,7 @@ spec:
         - name: artifacts
           mountPath: /artifacts
       - name: anvil-wait
-        image: kubesmith/kubesmith:0.1
+        image: kubesmith/kubesmith
         imagePullPolicy: Always
         command: ['kubesmith', 'anvil', 'wait', '--logtostderr', '-v', '2']
         env:

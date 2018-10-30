@@ -16,10 +16,6 @@ func (c *ForgeController) processForge(action sync.SyncAction) error {
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
-		logger := c.logger.WithFields(logrus.Fields{
-			"Name": cachedForge.GetName(),
-		})
-
 		return c.processDeletedForge(*cachedForge.DeepCopy(), logger)
 	default:
 		forge, err := c.forgeLister.Forges(cachedForge.GetNamespace()).Get(cachedForge.GetName())

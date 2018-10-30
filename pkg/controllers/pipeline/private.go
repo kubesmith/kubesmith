@@ -18,13 +18,12 @@ import (
 
 func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 	cachedPipeline := action.GetObject().(api.Pipeline)
+	logger := c.logger.WithFields(logrus.Fields{
+		"Name": cachedPipeline.GetName(),
+	})
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
-		logger := c.logger.WithFields(logrus.Fields{
-			"Name": cachedPipeline.GetName(),
-		})
-
 		return c.processDeletedPipeline(*cachedPipeline.DeepCopy(), logger)
 	default:
 		pipeline, err := c.pipelineLister.Pipelines(cachedPipeline.GetNamespace()).Get(cachedPipeline.GetName())
@@ -36,8 +35,7 @@ func (c *PipelineController) processPipeline(action sync.SyncAction) error {
 		}
 
 		// create a new logger for this pipeline's execution
-		logger := c.logger.WithFields(logrus.Fields{
-			"Name":       pipeline.GetName(),
+		logger = logger.WithFields(logrus.Fields{
 			"Phase":      pipeline.Status.Phase,
 			"StageIndex": pipeline.Status.StageIndex,
 		})

@@ -14,13 +14,12 @@ import (
 
 func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error {
 	cachedJob := action.GetObject().(api.PipelineJob)
+	logger := c.logger.WithFields(logrus.Fields{
+		"Name": cachedJob.GetName(),
+	})
 
 	switch action.GetAction() {
 	case sync.SyncActionDelete:
-		logger := c.logger.WithFields(logrus.Fields{
-			"Name": cachedJob.GetName(),
-		})
-
 		return c.processDeletedPipelineJob(*cachedJob.DeepCopy(), logger)
 	default:
 		job, err := c.pipelineJobLister.PipelineJobs(cachedJob.GetNamespace()).Get(cachedJob.GetName())
@@ -32,8 +31,7 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 		}
 
 		// create a new logger for this pipeline job's execution
-		logger := c.logger.WithFields(logrus.Fields{
-			"Name":  job.GetName(),
+		logger = logger.WithFields(logrus.Fields{
 			"Phase": job.Status.Phase,
 		})
 
