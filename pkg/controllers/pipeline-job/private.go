@@ -42,7 +42,7 @@ func (c *PipelineJobController) processPipelineJob(action sync.SyncAction) error
 			return c.processQueuedPipelineJob(*job.DeepCopy(), logger)
 		} else if job.IsRunning() {
 			return c.processRunningPipelineJob(*job.DeepCopy(), logger)
-		} else if job.HasSucceeded() || (job.HasFailed() && job.Spec.Job.AllowFailure) {
+		} else if job.HasSucceeded() {
 			return c.processSuccessfulPipelineJob(*job.DeepCopy(), logger)
 		} else if job.HasFailed() {
 			return c.processFailedPipelineJob(*job.DeepCopy(), logger)
@@ -132,6 +132,10 @@ func (c *PipelineJobController) processSuccessfulPipelineJob(original api.Pipeli
 }
 
 func (c *PipelineJobController) processFailedPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
+	if original.Spec.Job.AllowFailure == true {
+		return c.processSuccessfulPipelineJob(original, logger)
+	}
+
 	logger.Info("fetching associated pipeline stage")
 	pipelineStage, err := c.getAssociatedPipelineStage(original)
 	if err != nil {
