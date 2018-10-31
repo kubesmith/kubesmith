@@ -4,22 +4,27 @@ import (
 	"context"
 
 	"github.com/kubesmith/kubesmith/pkg/controllers"
-	kubesmithClient "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/sirupsen/logrus"
 	kubeInformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	coreListersv1 "k8s.io/client-go/listers/core/v1"
 )
 
 type Options struct {
-	Sidecar        OptionsSidecar
-	Pod            OptionsPod
-	S3             OptionsS3
-	ArchiveFile    OptionsArchiveFile
-	TimeoutSeconds int
+	Sidecar              OptionsSidecar
+	Pod                  OptionsPod
+	S3                   OptionsS3
+	ArchiveFile          OptionsArchiveFile
+	TimeoutSeconds       int
+	WatchIntervalSeconds int
 
-	client     kubesmithClient.Interface
-	kubeClient kubernetes.Interface
+	kubeClient          kubernetes.Interface
+	logger              logrus.FieldLogger
+	ctx                 context.Context
+	cancelContext       context.CancelFunc
+	kubeInformerFactory kubeInformers.SharedInformerFactory
+	podLister           coreListersv1.PodLister
 }
 
 type OptionsPod struct {

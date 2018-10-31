@@ -1,16 +1,26 @@
 package sidecar
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
 	"github.com/kubesmith/kubesmith/pkg/s3"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeInformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/tools/cache"
 )
 
 func (o *Options) BindFlags(flags *pflag.FlagSet) {
@@ -40,6 +50,8 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("archive-file-path", flags)
 	flags.IntVar(&o.TimeoutSeconds, "timeout-seconds", 300, "The length of time before the sidecar exits due to timeout")
 	env.BindEnvToFlag("timeout-seconds", flags)
+	flags.IntVar(&o.WatchIntervalSeconds, "watch-interval-seconds", 1, "The interval (in seconds) at which the sidecar will check for updates on the specified pod")
+	env.BindEnvToFlag("watch-interval-seconds", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
@@ -78,22 +90,27 @@ func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) er
 		return fmt.Errorf("Archive file path does not exist")
 	}
 
+	// ensure the pod exists
+	if _, err := o.podLister.Pods(o.Pod.Namespace).Get(o.Pod.Name); err != nil {
+		if apierrors.IsNotFound(err) {
+			return fmt.Errorf("pod was not found")
+		}
+
+		return errors.Wrap(err, "could not retrieve pod from lister")
+	}
+
 	return nil
 }
 
 func (o *Options) Complete(args []string, f client.Factory) error {
-	client, err := f.Client()
-	if err != nil {
-		return err
-	}
-	o.client = client
-
+	// setup our kube client
 	kubeClient, err := f.KubeClient()
 	if err != nil {
 		return err
 	}
 	o.kubeClient = kubeClient
 
+	// make sure our pod namespace is filled in
 	if o.Pod.Namespace == "" {
 		ns, err := getNamespaceFromServiceAccount()
 		if err == nil {
@@ -103,26 +120,71 @@ func (o *Options) Complete(args []string, f client.Factory) error {
 		}
 	}
 
+	// make sure our sidecar has a name
 	if o.Sidecar.Name == "" {
 		o.Sidecar.Name = "kubesmith"
 	}
 
+	// create an s3 client
 	s3Client, err := s3.NewS3Client(o.S3.Host, o.S3.Port, o.S3.AccessKey, o.S3.SecretKey, o.S3.UseSSL)
 	if err != nil {
 		return err
+	} else {
+		o.S3.client = s3Client
 	}
 
-	o.S3.client = s3Client
+	// create a logger
+	o.logger = logrus.New().WithField("name", "sidecar")
+
+	// create a context
+	o.ctx, o.cancelContext = context.WithTimeout(context.Background(), time.Second*time.Duration(o.TimeoutSeconds))
+
+	// call the cancelContext function if we receive a interrupt signal
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	// cancel the context if a signal is fired
+	go func() {
+		sig := <-sigs
+		o.logger.Infof("Received signal %s, shutting down", sig)
+		o.cancelContext()
+	}()
+
+	// setup a new informer
+	o.kubeInformerFactory = kubeInformers.NewSharedInformerFactoryWithOptions(
+		o.kubeClient,
+		0,
+		kubeInformers.WithNamespace(o.Pod.Namespace),
+		kubeInformers.WithTweakListOptions(func(listOptions *metav1.ListOptions) {
+			listOptions.FieldSelector = fmt.Sprintf("metadata.name=%s", o.Pod.Name)
+		}),
+	)
+
+	// pass our context to the kube informer
+	go o.kubeInformerFactory.Start(o.ctx.Done())
+
+	// setup the cache sync waiter
+	cache.WaitForCacheSync(
+		o.ctx.Done(),
+		o.kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
+	)
+
+	// create our pod lister
+	o.podLister = o.kubeInformerFactory.Core().V1().Pods().Lister()
+
+	// finally, return
 	return nil
 }
 
 func (o *Options) Run(c *cobra.Command, f client.Factory) error {
-	server := NewServer(o)
+	// start some routines to watch things
+	go o.waitForContextToFinish()
+	go o.checkPodListerCacheForUpdates()
 
-	if err := server.run(); err != nil {
-		return err
-	}
+	// now, wait for the context to timeout, complete or be cancelled...
+	<-o.ctx.Done()
 
+	// finally, return no errors
 	return nil
 }
 

@@ -1,60 +1,94 @@
 package sidecar
 
 import (
-	"sync"
+	"context"
+	"os"
+	"time"
 
-	"github.com/golang/glog"
 	"github.com/pkg/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/cache"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-func (s *Server) runControllers() error {
-	var wg sync.WaitGroup
+func (o *Options) checkPodListerCacheForUpdates() {
+	// wait out the interval
+	time.Sleep(time.Second * time.Duration(o.WatchIntervalSeconds))
 
-	// start the forge controller
-	wg.Add(1)
-	go func() {
-		s.anvilSideCarController.Run(s.ctx, 1)
-		wg.Done()
-	}()
+	// retrieve the pod from cache
+	pod, err := o.podLister.Pods(o.Pod.Namespace).Get(o.Pod.Name)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			o.processDeletedPod()
+			os.Exit(0)
+		}
 
-	// start the shared informers after all of our controllers
-	go s.kubeInformerFactory.Start(s.ctx.Done())
+		o.logger.Fatal(errors.Wrap(err, "could not retrieve pod from lister"))
+	}
 
-	// setup the cache sync waiter
-	cache.WaitForCacheSync(
-		s.ctx.Done(),
-		s.kubeInformerFactory.Core().V1().Pods().Informer().HasSynced,
-	)
-
-	<-s.ctx.Done()
-
-	glog.Info("Waiting for all controllers to shut down gracefully")
-	wg.Wait()
-
-	return nil
+	// check container's pod statuses and then keep calling itself
+	o.checkPodContainerStatuses(*pod)
+	o.checkPodListerCacheForUpdates()
 }
 
-func (s *Server) run() error {
-	if err := s.namespaceExists(s.namespace); err != nil {
-		return err
+func (o *Options) checkPodContainerStatuses(pod corev1.Pod) {
+	o.logger.Info("scanning container statuses")
+
+	allContainersHaveExited := true
+	exitCode := 0
+
+	for _, status := range pod.Status.ContainerStatuses {
+		if o.Sidecar.Name == status.Name {
+			continue
+		}
+
+		if status.State.Terminated == nil {
+			allContainersHaveExited = false
+			continue
+		} else {
+			exitCode = 1
+		}
 	}
 
-	if err := s.runControllers(); err != nil {
-		return err
+	if allContainersHaveExited {
+		if exitCode == 0 {
+			o.processSuccessfulPod()
+			os.Exit(0)
+		}
+
+		o.processFailedPod()
+		os.Exit(exitCode)
 	}
 
-	return nil
+	o.logger.Info("skipping; containers still running")
 }
 
-func (s *Server) namespaceExists(namespace string) error {
-	glog.V(1).Infof("Checking existence of %s", namespace)
+func (o *Options) waitForContextToFinish() {
+	for {
+		select {
+		case <-o.ctx.Done():
+			if o.ctx.Err() == context.DeadlineExceeded {
+				o.contextTimedOut()
+			}
 
-	if _, err := s.kubeClient.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{}); err != nil {
-		return errors.WithStack(err)
+			return
+		case <-time.After(time.Second):
+			break
+		}
 	}
+}
 
-	glog.V(1).Info("Namespace exists")
-	return nil
+func (o *Options) processSuccessfulPod() {
+	o.logger.Info("processing successful pod")
+}
+
+func (o *Options) processFailedPod() {
+	o.logger.Info("processing failed pod")
+}
+
+func (o *Options) processDeletedPod() {
+	o.logger.Info("processing deleted pod")
+}
+
+func (o *Options) contextTimedOut() {
+	o.logger.Info("timed out")
 }
