@@ -1,7 +1,6 @@
 package anvilsidecar
 
 import (
-	"github.com/davecgh/go-spew/spew"
 	"github.com/kubesmith/kubesmith/pkg/controllers"
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	"github.com/kubesmith/kubesmith/pkg/sync"
@@ -47,17 +46,7 @@ func NewAnvilSidecarController(
 				c.Queue.Add(sync.PodUpdateAction(*updatedPod))
 			},
 			DeleteFunc: func(obj interface{}) {
-				switch obj.(type) {
-				case cache.DeletedFinalStateUnknown:
-					pod := obj.(cache.DeletedFinalStateUnknown).Obj.(*corev1.Pod)
-					c.Queue.Add(sync.PodDeleteAction(*pod))
-				case *corev1.Pod:
-					pod := obj.(*corev1.Pod)
-					c.Queue.Add(sync.PodDeleteAction(*pod))
-				default:
-					c.logger.Info("ignoring deleted object; unknown")
-					spew.Dump(obj)
-				}
+				c.GenericController.Queue.ShutDown()
 			},
 		},
 	)

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/client"
@@ -40,7 +41,7 @@ func NewCommand(f client.Factory) *cobra.Command {
 }
 
 func NewServer(o *Options) *Server {
-	ctx, cancelContext := context.WithCancel(context.Background())
+	ctx, cancelContext := context.WithTimeout(context.Background(), time.Second*time.Duration(o.TimeoutSeconds))
 
 	// call the cancelContext function if we receive a interrupt signal
 	sigs := make(chan os.Signal, 1)

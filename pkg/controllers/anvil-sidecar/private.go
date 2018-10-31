@@ -17,23 +17,15 @@ func (c *AnvilSidecarController) processPod(action sync.SyncAction) error {
 		"Namespace": cachedPod.GetNamespace(),
 	})
 
-	switch action.GetAction() {
-	case sync.SyncActionDelete:
-		logger.Info("pod was deleted; exiting...")
-		os.Exit(0)
-	case sync.SyncActionAdd, sync.SyncActionUpdate:
-		pod, err := c.podLister.Pods(cachedPod.GetNamespace()).Get(cachedPod.GetName())
-		if apierrors.IsNotFound(err) {
-			logger.Info("unable to find pod")
-			return nil
-		} else if err != nil {
-			return errors.Wrap(err, "error getting pipeline")
-		}
-
-		return c.checkPodContainerStatuses(*pod.DeepCopy(), logger)
+	pod, err := c.podLister.Pods(cachedPod.GetNamespace()).Get(cachedPod.GetName())
+	if apierrors.IsNotFound(err) {
+		logger.Info("unable to find pod")
+		return nil
+	} else if err != nil {
+		return errors.Wrap(err, "error getting pipeline")
 	}
 
-	return nil
+	return c.checkPodContainerStatuses(*pod.DeepCopy(), logger)
 }
 
 func (c *AnvilSidecarController) checkPodContainerStatuses(original corev1.Pod, logger logrus.FieldLogger) error {
@@ -56,14 +48,11 @@ func (c *AnvilSidecarController) checkPodContainerStatuses(original corev1.Pod, 
 	}
 
 	if allContainersHaveExited {
-		logger.Info("firing hook")
-
-		if err := c.fireHook(exitCode, logger); err != nil {
-			return errors.Wrap(err, "could not fire hook")
+		if exitCode == 0 {
+			return c.fireHook(c.processSuccessfulPod, 0, "Successful", original, logger)
 		}
 
-		logger.Infof("hook fired; exiting with code %d", exitCode)
-		os.Exit(exitCode)
+		return c.fireHook(c.processFailedPod, exitCode, "Failed", original, logger)
 	} else {
 		logger.Info("skipping; work is still being performed")
 	}
@@ -71,14 +60,32 @@ func (c *AnvilSidecarController) checkPodContainerStatuses(original corev1.Pod, 
 	return nil
 }
 
-func (c *AnvilSidecarController) fireHook(exitCode int, logger logrus.FieldLogger) error {
-	// todo: flesh this logic out more
-	// todo: add timeout?
-	if exitCode == 0 {
-		logger.Info("containers were successful")
-	} else {
-		logger.Info("1 or more containers failed")
+func (c *AnvilSidecarController) fireHook(
+	callback HookCallback,
+	exitCode int,
+	status string,
+	original corev1.Pod,
+	logger logrus.FieldLogger,
+) error {
+	logger = logger.WithField("Status", status)
+	logger.Info("firing hook")
+
+	if err := callback(original, logger); err != nil {
+		return errors.Wrap(err, "could not fire hook")
 	}
 
+	logger.Infof("fired hook; exiting with code %d", exitCode)
+	os.Exit(exitCode)
+
+	return nil
+}
+
+func (c *AnvilSidecarController) processSuccessfulPod(original corev1.Pod, logger logrus.FieldLogger) error {
+	logger.Info("containers were successful")
+	return nil
+}
+
+func (c *AnvilSidecarController) processFailedPod(original corev1.Pod, logger logrus.FieldLogger) error {
+	logger.Info("1 or more containers failed")
 	return nil
 }

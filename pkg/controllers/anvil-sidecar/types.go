@@ -3,6 +3,7 @@ package anvilsidecar
 import (
 	"github.com/kubesmith/kubesmith/pkg/controllers/generic"
 	"github.com/sirupsen/logrus"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes"
 	coreListersv1 "k8s.io/client-go/listers/core/v1"
@@ -18,3 +19,5 @@ type AnvilSidecarController struct {
 	podLister coreListersv1.PodLister
 	clock     clock.Clock
 }
+
+type HookCallback func(corev1.Pod, logrus.FieldLogger) error
