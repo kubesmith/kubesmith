@@ -8,7 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func GetPipelineJobDownloadArtifactsInitContainer(job api.PipelineJob) corev1.Container {
+func GetPipelineJobJobDownloadArtifactsInitContainer(job api.PipelineJob) corev1.Container {
 	s3UseSSL := "false"
 	if job.Spec.Workspace.Storage.S3.UseSSL == true {
 		s3UseSSL = "true"

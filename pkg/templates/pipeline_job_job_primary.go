@@ -5,7 +5,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-func GetPipelineJobPrimaryContainer(job api.PipelineJob) corev1.Container {
+func GetPipelineJobJobPrimaryContainer(job api.PipelineJob) corev1.Container {
 	return corev1.Container{
 		Name:       "pipeline-job",
 		Image:      job.Spec.Job.Image,

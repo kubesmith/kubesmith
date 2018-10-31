@@ -5,6 +5,7 @@ import (
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
+	"github.com/kubesmith/kubesmith/pkg/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -93,10 +94,8 @@ func (c *PipelineStageController) processRunningPipelineStage(original api.Pipel
 	}
 
 	for index, job := range original.Spec.Jobs {
-		name := fmt.Sprintf("%s-job-%d", original.GetName(), index+1)
-
 		logger.Info("ensuring pipeline job is scheduled")
-		if err := c.ensureJobIsScheduled(name, original, job, logger); err != nil {
+		if err := c.ensureJobIsScheduled(index, original, job, logger); err != nil {
 			return errors.Wrap(err, "could not ensure pipeline job was scheduled")
 		}
 
@@ -257,22 +256,19 @@ func (c *PipelineStageController) getWrappedLabels(original api.PipelineStage) m
 }
 
 func (c *PipelineStageController) ensureJobIsScheduled(
-	name string,
+	jobIndex int,
 	original api.PipelineStage,
-	job api.PipelineJobSpecJob,
+	jobSpec api.PipelineJobSpecJob,
 	logger logrus.FieldLogger,
 ) error {
+	name := fmt.Sprintf("%s-job-%d", original.GetName(), jobIndex+1)
+
 	if _, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).Get(name); err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Info("pipeline job does not exist; scheduling")
 
-			job := GetPipelineJob(
-				name,
-				original.Spec.Workspace.Path,
-				c.getWrappedLabels(original),
-				original.Spec.Workspace.Storage,
-				job,
-			)
+			original.ObjectMeta.Labels = c.getWrappedLabels(original)
+			job := templates.GetPipelineJob(name, original, jobSpec)
 			if _, err := c.kubesmithClient.PipelineJobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not schedule pipeline job")
 			}

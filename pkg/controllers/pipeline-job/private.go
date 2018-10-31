@@ -344,7 +344,7 @@ func (c *PipelineJobController) ensureJobConfigMapIsScheduled(original api.Pipel
 		if apierrors.IsNotFound(err) {
 			logger.Info("job configmap does not exist; scheduling")
 
-			configMap := templates.GetPipelineJobConfigMap(original)
+			configMap := templates.GetPipelineJobJobConfigMap(original)
 			if _, err := c.kubeClient.CoreV1().ConfigMaps(original.GetNamespace()).Create(&configMap); err != nil {
 				return errors.Wrap(err, "could not schedule job configmap")
 			}
@@ -367,7 +367,7 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 			logger.Info("job does not exist; scheduling")
 
 			// create the job
-			job := templates.GetPipelineJob(original)
+			job := templates.GetPipelineJobJob(original)
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not schedule job")
 			}
