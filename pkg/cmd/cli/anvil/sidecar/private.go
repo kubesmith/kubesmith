@@ -44,7 +44,7 @@ func (o *Options) checkPodContainerStatuses(pod corev1.Pod) {
 		if status.State.Terminated == nil {
 			allContainersHaveExited = false
 			continue
-		} else {
+		} else if status.State.Terminated.ExitCode > 0 {
 			exitCode = 1
 		}
 	}
@@ -52,10 +52,10 @@ func (o *Options) checkPodContainerStatuses(pod corev1.Pod) {
 	if allContainersHaveExited {
 		if exitCode == 0 {
 			o.processSuccessfulPod()
-			os.Exit(0)
+		} else {
+			o.processFailedPod()
 		}
 
-		o.processFailedPod()
 		os.Exit(exitCode)
 	}
 

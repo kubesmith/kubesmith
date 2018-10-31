@@ -24,12 +24,6 @@ data:
 
     # let logs know when we're done
     echo "Done!"
-
-    # start breaking stuff... on purpose
-    STOP_hammertime
-
-    # write the IPC flag file
-    # touch /workspace/done-doing-work
 ---
 apiVersion: batch/v1
 kind: Job
@@ -54,44 +48,54 @@ spec:
           mountPath: /workspace
         - name: artifacts
           mountPath: /artifacts
-      # - name: anvil-wait
-      #   image: kubesmith/kubesmith
-      #   imagePullPolicy: Always
-      #   command: ['kubesmith', 'anvil', 'wait', '--logtostderr', '-v', '2']
-      #   env:
-      #   - name: S3_HOST
-      #     value: "minio.default.svc"
-      #   - name: S3_PORT
-      #     value: "9000"
-      #   - name: S3_BUCKET_NAME
-      #     value: "anvil-example"
-      #   - name: S3_ACCESS_KEY
-      #     valueFrom:
-      #       secretKeyRef:
-      #         name: anvil-example
-      #         key: minio-access-key
-      #   - name: S3_SECRET_KEY
-      #     valueFrom:
-      #       secretKeyRef:
-      #         name: anvil-example
-      #         key: minio-secret-key
-      #   - name: S3_USE_SSL
-      #     value: "false"
-      #   - name: ARCHIVE_FILE_NAME
-      #     value: "example-workload-1.tar.gz"
-      #   - name: ARCHIVE_FILE_PATH
-      #     value: "/artifacts"
-      #   - name: ARTIFACT_PATHS
-      #     value: "/workspace/task-2*,/workspace/task-4*,/workspace/task-10*"
-      #   - name: FLAG_FILE_PATH
-      #     value: "/workspace/done-doing-work"
-      #   - name: FLAG_FILE_WATCH_TIMEOUT
-      #     value: "20"
-      #   volumeMounts:
-      #   - name: workspace
-      #     mountPath: /workspace
-      #   - name: artifacts
-      #     mountPath: /artifacts
+      - name: anvil-sidecar
+        image: kubesmith/kubesmith
+        imagePullPolicy: Always
+        command: ['kubesmith', 'anvil', 'sidecar']
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SIDECAR_NAME
+          value: "anvil-sidecar"
+        - name: S3_HOST
+          value: "minio.default.svc"
+        - name: S3_PORT
+          value: "9000"
+        - name: S3_BUCKET_NAME
+          value: "anvil-example"
+        - name: S3_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-access-key
+        - name: S3_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: anvil-example
+              key: minio-secret-key
+        - name: S3_USE_SSL
+          value: "false"
+        # - name: ARCHIVE_FILE_NAME
+        #   value: "example-workload-1.tar.gz"
+        # - name: ARCHIVE_FILE_PATH
+        #   value: "/artifacts"
+        # - name: ARTIFACT_PATHS
+        #   value: "/workspace/task-2*,/workspace/task-4*,/workspace/task-10*"
+        # - name: FLAG_FILE_PATH
+        #   value: "/workspace/done-doing-work"
+        # - name: FLAG_FILE_WATCH_TIMEOUT
+        #   value: "20"
+        volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+        - name: artifacts
+          mountPath: /artifacts
       volumes:
       - name: scripts
         configMap:
