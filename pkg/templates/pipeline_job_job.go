@@ -18,7 +18,8 @@ func GetPipelineJobJob(job api.PipelineJob) batchv1.Job {
 			BackoffLimit: utils.Int32Ptr(0),
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
-					RestartPolicy: "Never",
+					ServiceAccountName: job.GetPipelineName(),
+					RestartPolicy:      "Never",
 					InitContainers: []corev1.Container{
 						GetPipelineJobJobSetupWorkspaceInitContainer(job),
 					},
