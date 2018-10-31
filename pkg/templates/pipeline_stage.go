@@ -1,16 +1,11 @@
-package pipeline
+package templates
 
 import (
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetPipelineStage(
-	name, workspacePath string,
-	storage api.WorkspaceStorage,
-	labels map[string]string,
-	jobs []api.PipelineJobSpecJob,
-) api.PipelineStage {
+func GetPipelineStage(name string, pipeline api.Pipeline) api.PipelineStage {
 	return api.PipelineStage{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: api.SchemeGroupVersion.String(),
@@ -18,14 +13,14 @@ func GetPipelineStage(
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
-			Labels: labels,
+			Labels: pipeline.GetLabels(),
 		},
 		Spec: api.PipelineStageSpec{
 			Workspace: api.PipelineStageWorkspace{
-				Path:    workspacePath,
-				Storage: storage,
+				Path:    pipeline.GetWorkspacePath(),
+				Storage: pipeline.Spec.Workspace.Storage,
 			},
-			Jobs: jobs,
+			Jobs: pipeline.GetExpandedJobsForCurrentStage(),
 		},
 	}
 }

@@ -540,14 +540,8 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 		if apierrors.IsNotFound(err) {
 			logger.Info("pipeline stage was not found; scheduling...")
 
-			pipelineStage := GetPipelineStage(
-				name,
-				original.GetWorkspacePath(),
-				original.Spec.Workspace.Storage,
-				c.getWrappedLabels(original),
-				original.GetExpandedJobsForCurrentStage(),
-			)
-
+			original.ObjectMeta.Labels = c.getWrappedLabels(original)
+			pipelineStage := templates.GetPipelineStage(name, original)
 			if _, err := c.kubesmithClient.PipelineStages(original.GetNamespace()).Create(&pipelineStage); err != nil {
 				return errors.Wrap(err, "could not schedule pipeline stage")
 			}
