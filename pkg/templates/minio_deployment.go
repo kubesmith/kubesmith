@@ -1,4 +1,4 @@
-package minio
+package templates
 
 import (
 	"github.com/kubesmith/kubesmith/pkg/utils"
@@ -7,7 +7,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetMinioDeployment(name string, labels map[string]string, secret corev1.Secret) appsv1.Deployment {
+func GetMinioDeployment(
+	name, serviceAccount, accessKey, secretKey string,
+	port int32,
+	labels map[string]string,
+	secret corev1.Secret,
+) appsv1.Deployment {
 	return appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -24,6 +29,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					ServiceAccountName: serviceAccount,
 					Containers: []corev1.Container{
 						{
 							Name:            "minio-server",
@@ -42,7 +48,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: MINIO_DEFAULT_ACCESS_KEY_KEY,
+											Key: accessKey,
 										},
 									},
 								},
@@ -53,7 +59,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 											LocalObjectReference: corev1.LocalObjectReference{
 												Name: secret.Name,
 											},
-											Key: MINIO_DEFAULT_SECRET_KEY_KEY,
+											Key: secretKey,
 										},
 									},
 								},
@@ -61,7 +67,7 @@ func GetMinioDeployment(name string, labels map[string]string, secret corev1.Sec
 							Ports: []corev1.ContainerPort{
 								{
 									Protocol:      corev1.ProtocolTCP,
-									ContainerPort: MINIO_DEFAULT_PORT,
+									ContainerPort: port,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

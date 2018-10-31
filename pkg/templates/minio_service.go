@@ -1,4 +1,4 @@
-package minio
+package templates
 
 import (
 	corev1 "k8s.io/api/core/v1"
@@ -6,7 +6,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func GetMinioService(name string, labels map[string]string) corev1.Service {
+func GetMinioService(
+	name string,
+	port int32,
+	labels map[string]string,
+) corev1.Service {
 	return corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -16,10 +20,10 @@ func GetMinioService(name string, labels map[string]string) corev1.Service {
 			Type: corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				corev1.ServicePort{
-					Port: MINIO_DEFAULT_PORT,
+					Port: port,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: MINIO_DEFAULT_PORT,
+						IntVal: port,
 					},
 				},
 			},

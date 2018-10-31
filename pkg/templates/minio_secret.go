@@ -1,4 +1,4 @@
-package minio
+package templates
 
 import (
 	"github.com/kubesmith/kubesmith/pkg/utils"
@@ -6,7 +6,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func GetMinioSecret(name string, labels map[string]string) corev1.Secret {
+func GetMinioSecret(
+	name, accessKey, secretKey string,
+	labels map[string]string,
+) corev1.Secret {
 	return corev1.Secret{
 		Type: corev1.SecretTypeOpaque,
 		ObjectMeta: metav1.ObjectMeta{
@@ -14,8 +17,8 @@ func GetMinioSecret(name string, labels map[string]string) corev1.Secret {
 			Labels: labels,
 		},
 		StringData: map[string]string{
-			"access-key": utils.GenerateRandomString(16),
-			"secret-key": utils.GenerateRandomString(32),
+			accessKey: utils.GenerateRandomString(16),
+			secretKey: utils.GenerateRandomString(32),
 		},
 	}
 }
