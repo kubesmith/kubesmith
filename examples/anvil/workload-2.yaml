@@ -58,7 +58,7 @@ spec:
         - name: S3_USE_SSL
           value: "false"
         - name: S3_PATH
-          value: "/workspace-1"
+          value: "/workload-1"
         - name: LOCAL_PATH
           value: "/workspace"
         volumeMounts:
