@@ -1,0 +1,106 @@
+apiVersion: kubesmith.io/v1
+kind: Pipeline
+metadata:
+  name: advanced-pipeline
+  namespace: kubesmith
+spec:
+  workspace:
+    path: /go/src/github.com/kubesmith/kubesmith
+    repo:
+      url: git@github.com:kubesmith/kubesmith.git
+      ssh:
+        secret:
+          name: kubesmith-forge-secrets
+          key: 2db1faf68f6fc212f0d7c4a728aa30d2
+
+  environment:
+    GIT_TAG: "9.9.9"
+    GIT_COMMIT_SHA: "testing123"
+
+  templates:
+  - name: default
+    image: golang
+  - name: build
+    environment:
+      CGO_ENABLED: "0"
+      PKG: github.com/kubesmith/kubesmith
+
+  stages:
+  - lint
+  - dependencies
+  - build
+  - dockerize
+
+  jobs:
+  - name: lint the code
+    stage: lint
+    extends:
+    - default
+    runner:
+    - go get -u golang.org/x/lint/golint
+    - golint ./
+
+  - name: install the vendor dependencies
+    stage: dependencies
+    extends:
+    - default
+    runner:
+    - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+    - dep ensure
+    - dep status
+    artifacts:
+      onSuccess:
+      - ./vendor
+
+  - name: build for windows
+    stage: build
+    extends:
+    - default
+    - build
+    environment:
+      GOOS: windows
+    runner:
+    - export LDFLAGS="-X $PKG/pkg/buildinfo.Version=${GIT_TAG} -X $PKG/pkg/buildinfo.GitSHA=${GIT_COMMIT_SHA}"
+    - printenv LDFLAGS
+    - go build -a -installsuffix cgo -ldflags "$LDFLAGS" -o kubesmith-windows.exe ./cmd/kubesmith/main.go
+    artifacts:
+      onSuccess:
+      - kubesmith-windows.exe
+
+  - name: build for linux
+    stage: build
+    extends:
+    - default
+    - build
+    environment:
+      GOOS: linux
+    runner:
+    - export LDFLAGS="-X $PKG/pkg/buildinfo.Version=${GIT_TAG} -X $PKG/pkg/buildinfo.GitSHA=${GIT_COMMIT_SHA}"
+    - printenv LDFLAGS
+    - go build -a -installsuffix cgo -ldflags "$LDFLAGS" -o kubesmith-linux ./cmd/kubesmith/main.go
+    artifacts:
+      onSuccess:
+      - kubesmith-linux
+
+  - name: build for darwin
+    stage: build
+    extends:
+    - default
+    - build
+    environment:
+      GOOS: darwin
+    runner:
+    - export LDFLAGS="-X $PKG/pkg/buildinfo.Version=${GIT_TAG} -X $PKG/pkg/buildinfo.GitSHA=${GIT_COMMIT_SHA}"
+    - printenv LDFLAGS
+    - go build -a -installsuffix cgo -ldflags "$LDFLAGS" -o kubesmith-darwin ./cmd/kubesmith/main.go
+    artifacts:
+      onSuccess:
+      - kubesmith-darwin
+
+  - name: testing
+    stage: dockerize
+    image: alpine
+    runner:
+    - echo "got here"
+    - ls -la
+
