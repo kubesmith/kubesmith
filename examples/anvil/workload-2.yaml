@@ -115,7 +115,7 @@ spec:
         - name: ARCHIVE_FILE_PATH
           value: "/artifacts"
         - name: SUCCESS_ARTIFACT_PATHS
-          value: "/workspace/task-10*"
+          value: "/workspace/task-2*,/workspace/task-4*,/workspace/task-10*"
         volumeMounts:
         - name: workspace
           mountPath: /workspace
