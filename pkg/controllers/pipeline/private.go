@@ -467,14 +467,8 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 		if apierrors.IsNotFound(err) {
 			logger.Info("clone repo job was not found; scheduling...")
 
-			job := GetRepoCloneJob(
-				name,
-				pipelineName,
-				original.Spec.Workspace.Repo,
-				original.Spec.Workspace.Storage.S3,
-				c.getWrappedLabels(original),
-			)
-
+			original.ObjectMeta.Labels = c.getWrappedLabels(original)
+			job := templates.GetJobCloneRepo(original)
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not schedule clone repo job")
 			}
