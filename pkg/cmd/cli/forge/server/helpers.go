@@ -90,6 +90,7 @@ func NewServer(o *Options) *Server {
 		kubeInformerFactory.Apps().V1().Deployments(),
 		kubeInformerFactory.Core().V1().Services(),
 		kubeInformerFactory.Batch().V1().Jobs(),
+		kubeInformerFactory.Core().V1().ServiceAccounts(),
 	)
 
 	pipelineStageController := pipelinestage.NewPipelineStageController(

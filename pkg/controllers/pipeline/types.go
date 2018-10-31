@@ -20,11 +20,12 @@ type PipelineController struct {
 	kubeClient          kubernetes.Interface
 	kubesmithClient     kubesmithv1.KubesmithV1Interface
 
-	pipelineLister      kubesmithListersv1.PipelineLister
-	pipelineStageLister kubesmithListersv1.PipelineStageLister
-	secretLister        coreListersv1.SecretLister
-	deploymentLister    appListersv1.DeploymentLister
-	serviceLister       coreListersv1.ServiceLister
-	jobLister           batchListersv1.JobLister
-	clock               clock.Clock
+	pipelineLister       kubesmithListersv1.PipelineLister
+	pipelineStageLister  kubesmithListersv1.PipelineStageLister
+	secretLister         coreListersv1.SecretLister
+	deploymentLister     appListersv1.DeploymentLister
+	serviceLister        coreListersv1.ServiceLister
+	jobLister            batchListersv1.JobLister
+	serviceAccountLister coreListersv1.ServiceAccountLister
+	clock                clock.Clock
 }

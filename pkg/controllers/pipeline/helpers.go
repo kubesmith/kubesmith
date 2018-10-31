@@ -28,20 +28,22 @@ func NewPipelineController(
 	deploymentInformer appInformersv1.DeploymentInformer,
 	serviceInformer coreInformersv1.ServiceInformer,
 	jobInformer batchInformersv1.JobInformer,
+	serviceAccountInformer coreInformersv1.ServiceAccountInformer,
 ) controllers.Interface {
 	c := &PipelineController{
-		GenericController:   generic.NewGenericController("Pipeline"),
-		maxRunningPipelines: maxRunningPipelines,
-		logger:              logger.WithField("controller", "Pipeline"),
-		kubeClient:          kubeClient,
-		kubesmithClient:     kubesmithClient,
-		pipelineLister:      pipelineInformer.Lister(),
-		pipelineStageLister: pipelineStageInformer.Lister(),
-		secretLister:        secretInformer.Lister(),
-		deploymentLister:    deploymentInformer.Lister(),
-		serviceLister:       serviceInformer.Lister(),
-		jobLister:           jobInformer.Lister(),
-		clock:               &clock.RealClock{},
+		GenericController:    generic.NewGenericController("Pipeline"),
+		maxRunningPipelines:  maxRunningPipelines,
+		logger:               logger.WithField("controller", "Pipeline"),
+		kubeClient:           kubeClient,
+		kubesmithClient:      kubesmithClient,
+		pipelineLister:       pipelineInformer.Lister(),
+		pipelineStageLister:  pipelineStageInformer.Lister(),
+		secretLister:         secretInformer.Lister(),
+		deploymentLister:     deploymentInformer.Lister(),
+		serviceLister:        serviceInformer.Lister(),
+		jobLister:            jobInformer.Lister(),
+		serviceAccountLister: serviceAccountInformer.Lister(),
+		clock:                &clock.RealClock{},
 	}
 
 	c.SyncHandler = c.processPipeline
@@ -53,6 +55,7 @@ func NewPipelineController(
 		deploymentInformer.Informer().HasSynced,
 		serviceInformer.Informer().HasSynced,
 		jobInformer.Informer().HasSynced,
+		serviceAccountInformer.Informer().HasSynced,
 	)
 
 	pipelineInformer.Informer().AddEventHandler(

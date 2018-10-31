@@ -9,6 +9,7 @@ import (
 	"github.com/kubesmith/kubesmith/pkg/controllers/pipeline/minio"
 	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/kubesmith/kubesmith/pkg/sync"
+	"github.com/kubesmith/kubesmith/pkg/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -121,6 +122,10 @@ func (c *PipelineController) processRunningPipeline(original api.Pipeline, logge
 		return nil
 	}
 
+	if err := c.ensureServiceAccountExists(original, logger); err != nil {
+		return errors.Wrap(err, "could not ensure service account exists")
+	}
+
 	if c.pipelineNeedsMinio(original) == true {
 		minioServer, err := c.ensureMinioServerIsRunning(original, logger)
 		if err != nil {
@@ -196,6 +201,10 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 		return err
 	}
 
+	if err := c.deleteAssociatedServiceAccount(original, deleteOptions, logger); err != nil {
+		return err
+	}
+
 	logger.Info("pipeline cleaned up")
 	return nil
 }
@@ -228,6 +237,22 @@ func (c *PipelineController) deleteAssociatedJobs(
 	}
 
 	logger.Info("deleted jobs")
+	return nil
+}
+
+func (c *PipelineController) deleteAssociatedServiceAccount(
+	original api.Pipeline,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
+	logger.Info("deleting service account (if it exists)")
+	if err := c.kubeClient.CoreV1().ServiceAccounts(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, "could not delete service account")
+		}
+	}
+
+	logger.Info("deleted service account")
 	return nil
 }
 
@@ -312,6 +337,28 @@ func (c *PipelineController) getWrappedLabels(pipeline api.Pipeline) map[string]
 	return labels
 }
 
+func (c *PipelineController) ensureServiceAccountExists(original api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("ensuring service account exists")
+	if _, err := c.serviceAccountLister.ServiceAccounts(original.GetNamespace()).Get(original.GetResourcePrefix()); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("service account does not exist; scheduling...")
+
+			serviceAccount := templates.GetPipelineServiceAccount(original)
+			if _, err := c.kubeClient.CoreV1().ServiceAccounts(original.GetNamespace()).Create(&serviceAccount); err != nil {
+				return errors.Wrap(err, "could not schedule service account")
+			}
+
+			logger.Info("service account is now scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get service account")
+	}
+
+	logger.Info("service account is scheduled")
+	return nil
+}
+
 func (c *PipelineController) ensureMinioServerIsRunning(original api.Pipeline, logger logrus.FieldLogger) (*minio.MinioServer, error) {
 	logger.Info("ensuring minio is scheduled")
 	minioServer := minio.NewMinioServer(
@@ -354,7 +401,7 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 	logger.Info("fetched secret data")
 
 	s3Client, err := s3.NewS3Client(
-		// original.Spec.Workspace.Storage.S3.Host,
+		// todo: original.Spec.Workspace.Storage.S3.Host,
 		"127.0.0.1",
 		original.Spec.Workspace.Storage.S3.Port,
 		string(secret.Data[original.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey]),
@@ -511,7 +558,7 @@ func (c *PipelineController) ensureCurrentPipelineStageIsScheduled(original api.
 				return errors.Wrap(err, "could not schedule pipeline stage")
 			}
 
-			logger.Info("pipeline stage is scheduled")
+			logger.Info("pipeline stage is now scheduled")
 			return nil
 		}
 
