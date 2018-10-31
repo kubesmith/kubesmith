@@ -21,7 +21,7 @@ package v1
 import (
 	v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	scheme "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/scheme"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
@@ -38,11 +38,11 @@ type ForgeInterface interface {
 	Create(*v1.Forge) (*v1.Forge, error)
 	Update(*v1.Forge) (*v1.Forge, error)
 	UpdateStatus(*v1.Forge) (*v1.Forge, error)
-	Delete(name string, options *meta_v1.DeleteOptions) error
-	DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error
-	Get(name string, options meta_v1.GetOptions) (*v1.Forge, error)
-	List(opts meta_v1.ListOptions) (*v1.ForgeList, error)
-	Watch(opts meta_v1.ListOptions) (watch.Interface, error)
+	Delete(name string, options *metav1.DeleteOptions) error
+	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
+	Get(name string, options metav1.GetOptions) (*v1.Forge, error)
+	List(opts metav1.ListOptions) (*v1.ForgeList, error)
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Forge, err error)
 	ForgeExpansion
 }
@@ -62,7 +62,7 @@ func newForges(c *KubesmithV1Client, namespace string) *forges {
 }
 
 // Get takes name of the forge, and returns the corresponding forge object, and an error if there is any.
-func (c *forges) Get(name string, options meta_v1.GetOptions) (result *v1.Forge, err error) {
+func (c *forges) Get(name string, options metav1.GetOptions) (result *v1.Forge, err error) {
 	result = &v1.Forge{}
 	err = c.client.Get().
 		Namespace(c.ns).
@@ -75,7 +75,7 @@ func (c *forges) Get(name string, options meta_v1.GetOptions) (result *v1.Forge,
 }
 
 // List takes label and field selectors, and returns the list of Forges that match those selectors.
-func (c *forges) List(opts meta_v1.ListOptions) (result *v1.ForgeList, err error) {
+func (c *forges) List(opts metav1.ListOptions) (result *v1.ForgeList, err error) {
 	result = &v1.ForgeList{}
 	err = c.client.Get().
 		Namespace(c.ns).
@@ -87,7 +87,7 @@ func (c *forges) List(opts meta_v1.ListOptions) (result *v1.ForgeList, err error
 }
 
 // Watch returns a watch.Interface that watches the requested forges.
-func (c *forges) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
+func (c *forges) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
@@ -138,7 +138,7 @@ func (c *forges) UpdateStatus(forge *v1.Forge) (result *v1.Forge, err error) {
 }
 
 // Delete takes name of the forge and deletes it. Returns an error if one occurs.
-func (c *forges) Delete(name string, options *meta_v1.DeleteOptions) error {
+func (c *forges) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("forges").
@@ -149,7 +149,7 @@ func (c *forges) Delete(name string, options *meta_v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *forges) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
+func (c *forges) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("forges").

@@ -386,7 +386,7 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 	defer cancelFunc()
 
 	repoArtifactCreated := make(chan bool, 1)
-	go c.waitForRepoArtifactToBeCreated(ctx, 5, original.Spec.Workspace.Storage.S3.BucketName, s3Client, repoArtifactCreated)
+	go c.waitForRepoArtifactToBeCreated(ctx, 2, original.Spec.Workspace.Storage.S3.BucketName, s3Client, repoArtifactCreated)
 
 	if exists := <-repoArtifactCreated; !exists {
 		logger.Info("repo artifact was not created; requeueing pipeline")

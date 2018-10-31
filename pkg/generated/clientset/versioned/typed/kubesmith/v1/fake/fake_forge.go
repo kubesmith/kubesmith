@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	kubesmith_v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,20 +39,20 @@ var forgesResource = schema.GroupVersionResource{Group: "kubesmith.io", Version:
 var forgesKind = schema.GroupVersionKind{Group: "kubesmith.io", Version: "v1", Kind: "Forge"}
 
 // Get takes name of the forge, and returns the corresponding forge object, and an error if there is any.
-func (c *FakeForges) Get(name string, options v1.GetOptions) (result *kubesmith_v1.Forge, err error) {
+func (c *FakeForges) Get(name string, options v1.GetOptions) (result *kubesmithv1.Forge, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(forgesResource, c.ns, name), &kubesmith_v1.Forge{})
+		Invokes(testing.NewGetAction(forgesResource, c.ns, name), &kubesmithv1.Forge{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Forge), err
+	return obj.(*kubesmithv1.Forge), err
 }
 
 // List takes label and field selectors, and returns the list of Forges that match those selectors.
-func (c *FakeForges) List(opts v1.ListOptions) (result *kubesmith_v1.ForgeList, err error) {
+func (c *FakeForges) List(opts v1.ListOptions) (result *kubesmithv1.ForgeList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(forgesResource, forgesKind, c.ns, opts), &kubesmith_v1.ForgeList{})
+		Invokes(testing.NewListAction(forgesResource, forgesKind, c.ns, opts), &kubesmithv1.ForgeList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakeForges) List(opts v1.ListOptions) (result *kubesmith_v1.ForgeList, 
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &kubesmith_v1.ForgeList{ListMeta: obj.(*kubesmith_v1.ForgeList).ListMeta}
-	for _, item := range obj.(*kubesmith_v1.ForgeList).Items {
+	list := &kubesmithv1.ForgeList{ListMeta: obj.(*kubesmithv1.ForgeList).ListMeta}
+	for _, item := range obj.(*kubesmithv1.ForgeList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,43 +79,43 @@ func (c *FakeForges) Watch(opts v1.ListOptions) (watch.Interface, error) {
 }
 
 // Create takes the representation of a forge and creates it.  Returns the server's representation of the forge, and an error, if there is any.
-func (c *FakeForges) Create(forge *kubesmith_v1.Forge) (result *kubesmith_v1.Forge, err error) {
+func (c *FakeForges) Create(forge *kubesmithv1.Forge) (result *kubesmithv1.Forge, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(forgesResource, c.ns, forge), &kubesmith_v1.Forge{})
+		Invokes(testing.NewCreateAction(forgesResource, c.ns, forge), &kubesmithv1.Forge{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Forge), err
+	return obj.(*kubesmithv1.Forge), err
 }
 
 // Update takes the representation of a forge and updates it. Returns the server's representation of the forge, and an error, if there is any.
-func (c *FakeForges) Update(forge *kubesmith_v1.Forge) (result *kubesmith_v1.Forge, err error) {
+func (c *FakeForges) Update(forge *kubesmithv1.Forge) (result *kubesmithv1.Forge, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(forgesResource, c.ns, forge), &kubesmith_v1.Forge{})
+		Invokes(testing.NewUpdateAction(forgesResource, c.ns, forge), &kubesmithv1.Forge{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Forge), err
+	return obj.(*kubesmithv1.Forge), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeForges) UpdateStatus(forge *kubesmith_v1.Forge) (*kubesmith_v1.Forge, error) {
+func (c *FakeForges) UpdateStatus(forge *kubesmithv1.Forge) (*kubesmithv1.Forge, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(forgesResource, "status", c.ns, forge), &kubesmith_v1.Forge{})
+		Invokes(testing.NewUpdateSubresourceAction(forgesResource, "status", c.ns, forge), &kubesmithv1.Forge{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Forge), err
+	return obj.(*kubesmithv1.Forge), err
 }
 
 // Delete takes name of the forge and deletes it. Returns an error if one occurs.
 func (c *FakeForges) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(forgesResource, c.ns, name), &kubesmith_v1.Forge{})
+		Invokes(testing.NewDeleteAction(forgesResource, c.ns, name), &kubesmithv1.Forge{})
 
 	return err
 }
@@ -124,17 +124,17 @@ func (c *FakeForges) Delete(name string, options *v1.DeleteOptions) error {
 func (c *FakeForges) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(forgesResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &kubesmith_v1.ForgeList{})
+	_, err := c.Fake.Invokes(action, &kubesmithv1.ForgeList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched forge.
-func (c *FakeForges) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmith_v1.Forge, err error) {
+func (c *FakeForges) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmithv1.Forge, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(forgesResource, c.ns, name, data, subresources...), &kubesmith_v1.Forge{})
+		Invokes(testing.NewPatchSubresourceAction(forgesResource, c.ns, name, data, subresources...), &kubesmithv1.Forge{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Forge), err
+	return obj.(*kubesmithv1.Forge), err
 }

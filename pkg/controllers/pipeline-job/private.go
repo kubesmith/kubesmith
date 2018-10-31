@@ -5,6 +5,7 @@ import (
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	"github.com/kubesmith/kubesmith/pkg/sync"
+	"github.com/kubesmith/kubesmith/pkg/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -103,6 +104,15 @@ func (c *PipelineJobController) processQueuedPipelineJob(original api.PipelineJo
 }
 
 func (c *PipelineJobController) processRunningPipelineJob(original api.PipelineJob, logger logrus.FieldLogger) error {
+	// update this copy of the job so it has the new labels (which will be used when the pipeline job
+	original.ObjectMeta.Labels = c.getWrappedLabels(original)
+
+	// update this copy of the job so that runner is accurately configured (if specified)
+	if len(original.Spec.Job.Runner) > 0 {
+		original.Spec.Job.Command = []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
+		original.Spec.Job.Args = []string{}
+	}
+
 	if err := c.ensureJobConfigMapIsScheduled(original, logger); err != nil {
 		return errors.Wrap(err, "could not ensure job configmap is scheduled")
 	}
@@ -334,12 +344,7 @@ func (c *PipelineJobController) ensureJobConfigMapIsScheduled(original api.Pipel
 		if apierrors.IsNotFound(err) {
 			logger.Info("job configmap does not exist; scheduling")
 
-			configMap := GetJobConfigMap(
-				original.GetName(),
-				c.getWrappedLabels(original),
-				original.GetConfigMapData(),
-			)
-
+			configMap := templates.GetPipelineJobConfigMap(original)
 			if _, err := c.kubeClient.CoreV1().ConfigMaps(original.GetNamespace()).Create(&configMap); err != nil {
 				return errors.Wrap(err, "could not schedule job configmap")
 			}
@@ -361,32 +366,8 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 		if apierrors.IsNotFound(err) {
 			logger.Info("job does not exist; scheduling")
 
-			pipelineName, err := c.getPipelineName(original)
-			if err != nil {
-				return errors.Wrap(err, "could not get pipeline name")
-			}
-
-			command := original.Spec.Job.Command
-			args := original.Spec.Job.Args
-
-			if len(original.Spec.Job.Runner) > 0 {
-				// runner trumps all
-				command = []string{"/bin/sh", "-x", "/kubesmith/scripts/pipeline-script.sh"}
-				args = []string{}
-			}
-
-			job := GetJob(
-				original.GetName(),
-				original.Spec.Job.Image,
-				original.Spec.Workspace.Path,
-				pipelineName,
-				command,
-				args,
-				original.Spec.Workspace.Storage.S3,
-				original.Spec.Job.Environment,
-				c.getWrappedLabels(original),
-			)
-
+			// create the job
+			job := templates.GetPipelineJob(original)
 			if _, err := c.kubeClient.BatchV1().Jobs(original.GetNamespace()).Create(&job); err != nil {
 				return errors.Wrap(err, "could not schedule job")
 			}
@@ -400,17 +381,6 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 
 	logger.Info("job is scheduled")
 	return nil
-}
-
-func (c *PipelineJobController) getPipelineName(original api.PipelineJob) (string, error) {
-	labels := original.GetLabels()
-
-	pipelineID, ok := labels[api.GetLabelKey("PipelineID")]
-	if !ok {
-		return "", errors.New("no label exists")
-	}
-
-	return fmt.Sprintf("pipeline-%s", pipelineID), nil
 }
 
 func (c *PipelineJobController) getWrappedLabels(original api.PipelineJob) map[string]string {

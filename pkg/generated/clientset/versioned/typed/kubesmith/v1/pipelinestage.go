@@ -21,7 +21,7 @@ package v1
 import (
 	v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	scheme "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned/scheme"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	rest "k8s.io/client-go/rest"
@@ -38,11 +38,11 @@ type PipelineStageInterface interface {
 	Create(*v1.PipelineStage) (*v1.PipelineStage, error)
 	Update(*v1.PipelineStage) (*v1.PipelineStage, error)
 	UpdateStatus(*v1.PipelineStage) (*v1.PipelineStage, error)
-	Delete(name string, options *meta_v1.DeleteOptions) error
-	DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error
-	Get(name string, options meta_v1.GetOptions) (*v1.PipelineStage, error)
-	List(opts meta_v1.ListOptions) (*v1.PipelineStageList, error)
-	Watch(opts meta_v1.ListOptions) (watch.Interface, error)
+	Delete(name string, options *metav1.DeleteOptions) error
+	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
+	Get(name string, options metav1.GetOptions) (*v1.PipelineStage, error)
+	List(opts metav1.ListOptions) (*v1.PipelineStageList, error)
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.PipelineStage, err error)
 	PipelineStageExpansion
 }
@@ -62,7 +62,7 @@ func newPipelineStages(c *KubesmithV1Client, namespace string) *pipelineStages {
 }
 
 // Get takes name of the pipelineStage, and returns the corresponding pipelineStage object, and an error if there is any.
-func (c *pipelineStages) Get(name string, options meta_v1.GetOptions) (result *v1.PipelineStage, err error) {
+func (c *pipelineStages) Get(name string, options metav1.GetOptions) (result *v1.PipelineStage, err error) {
 	result = &v1.PipelineStage{}
 	err = c.client.Get().
 		Namespace(c.ns).
@@ -75,7 +75,7 @@ func (c *pipelineStages) Get(name string, options meta_v1.GetOptions) (result *v
 }
 
 // List takes label and field selectors, and returns the list of PipelineStages that match those selectors.
-func (c *pipelineStages) List(opts meta_v1.ListOptions) (result *v1.PipelineStageList, err error) {
+func (c *pipelineStages) List(opts metav1.ListOptions) (result *v1.PipelineStageList, err error) {
 	result = &v1.PipelineStageList{}
 	err = c.client.Get().
 		Namespace(c.ns).
@@ -87,7 +87,7 @@ func (c *pipelineStages) List(opts meta_v1.ListOptions) (result *v1.PipelineStag
 }
 
 // Watch returns a watch.Interface that watches the requested pipelineStages.
-func (c *pipelineStages) Watch(opts meta_v1.ListOptions) (watch.Interface, error) {
+func (c *pipelineStages) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
@@ -138,7 +138,7 @@ func (c *pipelineStages) UpdateStatus(pipelineStage *v1.PipelineStage) (result *
 }
 
 // Delete takes name of the pipelineStage and deletes it. Returns an error if one occurs.
-func (c *pipelineStages) Delete(name string, options *meta_v1.DeleteOptions) error {
+func (c *pipelineStages) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("pipelinestages").
@@ -149,7 +149,7 @@ func (c *pipelineStages) Delete(name string, options *meta_v1.DeleteOptions) err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *pipelineStages) DeleteCollection(options *meta_v1.DeleteOptions, listOptions meta_v1.ListOptions) error {
+func (c *pipelineStages) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("pipelinestages").

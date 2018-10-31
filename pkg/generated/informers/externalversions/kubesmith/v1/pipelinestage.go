@@ -21,11 +21,11 @@ package v1
 import (
 	time "time"
 
-	kubesmith_v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	versioned "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/internalinterfaces"
 	v1 "github.com/kubesmith/kubesmith/pkg/generated/listers/kubesmith/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
@@ -57,20 +57,20 @@ func NewPipelineStageInformer(client versioned.Interface, namespace string, resy
 func NewFilteredPipelineStageInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
 				return client.KubesmithV1().PipelineStages(namespace).List(options)
 			},
-			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
 				return client.KubesmithV1().PipelineStages(namespace).Watch(options)
 			},
 		},
-		&kubesmith_v1.PipelineStage{},
+		&kubesmithv1.PipelineStage{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *pipelineStageInformer) defaultInformer(client versioned.Interface, resy
 }
 
 func (f *pipelineStageInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kubesmith_v1.PipelineStage{}, f.defaultInformer)
+	return f.factory.InformerFor(&kubesmithv1.PipelineStage{}, f.defaultInformer)
 }
 
 func (f *pipelineStageInformer) Lister() v1.PipelineStageLister {

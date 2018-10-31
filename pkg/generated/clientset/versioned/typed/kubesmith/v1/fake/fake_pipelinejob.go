@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	kubesmith_v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,20 +39,20 @@ var pipelinejobsResource = schema.GroupVersionResource{Group: "kubesmith.io", Ve
 var pipelinejobsKind = schema.GroupVersionKind{Group: "kubesmith.io", Version: "v1", Kind: "PipelineJob"}
 
 // Get takes name of the pipelineJob, and returns the corresponding pipelineJob object, and an error if there is any.
-func (c *FakePipelineJobs) Get(name string, options v1.GetOptions) (result *kubesmith_v1.PipelineJob, err error) {
+func (c *FakePipelineJobs) Get(name string, options v1.GetOptions) (result *kubesmithv1.PipelineJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelinejobsResource, c.ns, name), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewGetAction(pipelinejobsResource, c.ns, name), &kubesmithv1.PipelineJob{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.PipelineJob), err
+	return obj.(*kubesmithv1.PipelineJob), err
 }
 
 // List takes label and field selectors, and returns the list of PipelineJobs that match those selectors.
-func (c *FakePipelineJobs) List(opts v1.ListOptions) (result *kubesmith_v1.PipelineJobList, err error) {
+func (c *FakePipelineJobs) List(opts v1.ListOptions) (result *kubesmithv1.PipelineJobList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelinejobsResource, pipelinejobsKind, c.ns, opts), &kubesmith_v1.PipelineJobList{})
+		Invokes(testing.NewListAction(pipelinejobsResource, pipelinejobsKind, c.ns, opts), &kubesmithv1.PipelineJobList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakePipelineJobs) List(opts v1.ListOptions) (result *kubesmith_v1.Pipel
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &kubesmith_v1.PipelineJobList{ListMeta: obj.(*kubesmith_v1.PipelineJobList).ListMeta}
-	for _, item := range obj.(*kubesmith_v1.PipelineJobList).Items {
+	list := &kubesmithv1.PipelineJobList{ListMeta: obj.(*kubesmithv1.PipelineJobList).ListMeta}
+	for _, item := range obj.(*kubesmithv1.PipelineJobList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,43 +79,43 @@ func (c *FakePipelineJobs) Watch(opts v1.ListOptions) (watch.Interface, error) {
 }
 
 // Create takes the representation of a pipelineJob and creates it.  Returns the server's representation of the pipelineJob, and an error, if there is any.
-func (c *FakePipelineJobs) Create(pipelineJob *kubesmith_v1.PipelineJob) (result *kubesmith_v1.PipelineJob, err error) {
+func (c *FakePipelineJobs) Create(pipelineJob *kubesmithv1.PipelineJob) (result *kubesmithv1.PipelineJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelinejobsResource, c.ns, pipelineJob), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewCreateAction(pipelinejobsResource, c.ns, pipelineJob), &kubesmithv1.PipelineJob{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.PipelineJob), err
+	return obj.(*kubesmithv1.PipelineJob), err
 }
 
 // Update takes the representation of a pipelineJob and updates it. Returns the server's representation of the pipelineJob, and an error, if there is any.
-func (c *FakePipelineJobs) Update(pipelineJob *kubesmith_v1.PipelineJob) (result *kubesmith_v1.PipelineJob, err error) {
+func (c *FakePipelineJobs) Update(pipelineJob *kubesmithv1.PipelineJob) (result *kubesmithv1.PipelineJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelinejobsResource, c.ns, pipelineJob), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewUpdateAction(pipelinejobsResource, c.ns, pipelineJob), &kubesmithv1.PipelineJob{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.PipelineJob), err
+	return obj.(*kubesmithv1.PipelineJob), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakePipelineJobs) UpdateStatus(pipelineJob *kubesmith_v1.PipelineJob) (*kubesmith_v1.PipelineJob, error) {
+func (c *FakePipelineJobs) UpdateStatus(pipelineJob *kubesmithv1.PipelineJob) (*kubesmithv1.PipelineJob, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(pipelinejobsResource, "status", c.ns, pipelineJob), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewUpdateSubresourceAction(pipelinejobsResource, "status", c.ns, pipelineJob), &kubesmithv1.PipelineJob{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.PipelineJob), err
+	return obj.(*kubesmithv1.PipelineJob), err
 }
 
 // Delete takes name of the pipelineJob and deletes it. Returns an error if one occurs.
 func (c *FakePipelineJobs) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(pipelinejobsResource, c.ns, name), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewDeleteAction(pipelinejobsResource, c.ns, name), &kubesmithv1.PipelineJob{})
 
 	return err
 }
@@ -124,17 +124,17 @@ func (c *FakePipelineJobs) Delete(name string, options *v1.DeleteOptions) error 
 func (c *FakePipelineJobs) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(pipelinejobsResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &kubesmith_v1.PipelineJobList{})
+	_, err := c.Fake.Invokes(action, &kubesmithv1.PipelineJobList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched pipelineJob.
-func (c *FakePipelineJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmith_v1.PipelineJob, err error) {
+func (c *FakePipelineJobs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmithv1.PipelineJob, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinejobsResource, c.ns, name, data, subresources...), &kubesmith_v1.PipelineJob{})
+		Invokes(testing.NewPatchSubresourceAction(pipelinejobsResource, c.ns, name, data, subresources...), &kubesmithv1.PipelineJob{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.PipelineJob), err
+	return obj.(*kubesmithv1.PipelineJob), err
 }

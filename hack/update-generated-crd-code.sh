@@ -4,7 +4,7 @@
 
 # setup a few helper variables
 ROOT="github.com/kubesmith/kubesmith"
-VERSION="kubernetes-1.11.0"
+VERSION="kubernetes-1.12.0"
 
 # remove the local versions of the generated code
 rm "${GOPATH}/src/${ROOT}/pkg/apis/kubesmith/v1/zz_generated.deepcopy.go"

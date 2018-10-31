@@ -2,6 +2,8 @@ package v1
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -17,15 +19,15 @@ type PipelineJobSpec struct {
 }
 
 type PipelineJobSpecJob struct {
-	Name          string                `json:"name"`
-	Image         string                `json:"image"`
-	Environment   map[string]string     `json:"environment"`
-	Command       []string              `json:"command"`
-	Args          []string              `json:"args"`
-	ConfigMapData map[string]string     `json:"configMapData"`
-	Runner        []string              `json:"runner"`
-	AllowFailure  bool                  `json:"allowFailure"`
-	Artifacts     []PipelineJobArtifact `json:"artifacts"`
+	Name          string               `json:"name"`
+	Image         string               `json:"image"`
+	Environment   map[string]string    `json:"environment"`
+	Command       []string             `json:"command"`
+	Args          []string             `json:"args"`
+	ConfigMapData map[string]string    `json:"configMapData"`
+	Runner        []string             `json:"runner"`
+	AllowFailure  bool                 `json:"allowFailure"`
+	Artifacts     PipelineJobArtifacts `json:"artifacts"`
 }
 
 type PipelineJobWorkspace struct {
@@ -62,6 +64,57 @@ type PipelineJobList struct {
 }
 
 // helpers
+
+func (p *PipelineJob) getLabelFromJob(label string) string {
+	labels := p.GetLabels()
+
+	value, ok := labels[GetLabelKey(label)]
+	if !ok {
+		return ""
+	}
+
+	return value
+}
+
+func (p *PipelineJob) GetPipelineName() string {
+	return fmt.Sprintf("pipeline-%s", p.getLabelFromJob("PipelineID"))
+}
+
+func (p *PipelineJob) GetPipelineStageName() string {
+	pipelineName := p.GetPipelineName()
+	stageName := p.getLabelFromJob("PipelineStageName")
+
+	return strings.Replace(stageName, fmt.Sprintf("%s-", pipelineName), "", 1)
+}
+
+func (p *PipelineJob) GetPipelineJobName() string {
+	pipelineName := p.GetPipelineName()
+	stageName := p.GetPipelineStageName()
+
+	return strings.Replace(p.GetName(), fmt.Sprintf("%s-%s-", pipelineName, stageName), "", 1)
+}
+
+func (p *PipelineJob) GetSuccessArtifactPaths() []string {
+	artifacts := []string{}
+
+	for _, artifact := range p.Spec.Job.Artifacts.OnSuccess {
+		path := fmt.Sprintf("%s%s%s", p.Spec.Workspace.Path, string(os.PathSeparator), artifact)
+		artifacts = append(artifacts, path)
+	}
+
+	return artifacts
+}
+
+func (p *PipelineJob) GetFailArtifactPaths() []string {
+	artifacts := []string{}
+
+	for _, artifact := range p.Spec.Job.Artifacts.OnFail {
+		path := fmt.Sprintf("%s%s%s", p.Spec.Workspace.Path, string(os.PathSeparator), artifact)
+		artifacts = append(artifacts, path)
+	}
+
+	return artifacts
+}
 
 func (p *PipelineJob) GetConfigMapData() map[string]string {
 	if len(p.Spec.Job.ConfigMapData) > 0 {

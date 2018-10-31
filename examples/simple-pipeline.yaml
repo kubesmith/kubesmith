@@ -32,12 +32,7 @@ spec:
     runner:
     - pwd
     - ls -la
-    - echo "first stage is the best!" > my-artifact.txt
-    artifacts:
-    - name: my-artifact
-      when: on-success
-      paths:
-      - my-artifact.txt
+    - echo "first stage is the best!"
 
   - name: do something that requires more time
     stage: second
@@ -51,12 +46,29 @@ spec:
 
         # testing global variables
         echo "\"${SAMPLE_GLOBAL_VAR}\" should equal \"foobar\""
-
-        # the following script will purposefully fail this job but note the
-        # allowFailure is set to true so, even though the job failed, the pipeline
-        # will continue on as if it didn't
-        purposefully_fail_on_this
     allowFailure: true
+
+  - name: create-an-artifact-on-success
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "testing artifacts on success" > success.txt
+    artifacts:
+      onSuccess:
+      - success.txt
+
+  - name: create-an-artifact-on-fail
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "testing artifacts on fail" > fail.txt
+    - purposefully_fail_on_this
+    allowFailure: true
+    artifacts:
+      onFail:
+      - fail.txt
 
   - name: demonstrate multiple script calls from one configuration
     stage: third
@@ -76,3 +88,6 @@ spec:
         echo "${FOO} from second script"
       third-script.sh: |
         echo "${FOO} from third script - this is ${SAMPLE_GLOBAL_VAR} :)"
+        ls -la
+        cat success.txt
+        cat fail.txt

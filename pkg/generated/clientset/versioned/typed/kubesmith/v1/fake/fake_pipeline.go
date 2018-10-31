@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	kubesmith_v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -39,20 +39,20 @@ var pipelinesResource = schema.GroupVersionResource{Group: "kubesmith.io", Versi
 var pipelinesKind = schema.GroupVersionKind{Group: "kubesmith.io", Version: "v1", Kind: "Pipeline"}
 
 // Get takes name of the pipeline, and returns the corresponding pipeline object, and an error if there is any.
-func (c *FakePipelines) Get(name string, options v1.GetOptions) (result *kubesmith_v1.Pipeline, err error) {
+func (c *FakePipelines) Get(name string, options v1.GetOptions) (result *kubesmithv1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(pipelinesResource, c.ns, name), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewGetAction(pipelinesResource, c.ns, name), &kubesmithv1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Pipeline), err
+	return obj.(*kubesmithv1.Pipeline), err
 }
 
 // List takes label and field selectors, and returns the list of Pipelines that match those selectors.
-func (c *FakePipelines) List(opts v1.ListOptions) (result *kubesmith_v1.PipelineList, err error) {
+func (c *FakePipelines) List(opts v1.ListOptions) (result *kubesmithv1.PipelineList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(pipelinesResource, pipelinesKind, c.ns, opts), &kubesmith_v1.PipelineList{})
+		Invokes(testing.NewListAction(pipelinesResource, pipelinesKind, c.ns, opts), &kubesmithv1.PipelineList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakePipelines) List(opts v1.ListOptions) (result *kubesmith_v1.Pipeline
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &kubesmith_v1.PipelineList{ListMeta: obj.(*kubesmith_v1.PipelineList).ListMeta}
-	for _, item := range obj.(*kubesmith_v1.PipelineList).Items {
+	list := &kubesmithv1.PipelineList{ListMeta: obj.(*kubesmithv1.PipelineList).ListMeta}
+	for _, item := range obj.(*kubesmithv1.PipelineList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -79,43 +79,43 @@ func (c *FakePipelines) Watch(opts v1.ListOptions) (watch.Interface, error) {
 }
 
 // Create takes the representation of a pipeline and creates it.  Returns the server's representation of the pipeline, and an error, if there is any.
-func (c *FakePipelines) Create(pipeline *kubesmith_v1.Pipeline) (result *kubesmith_v1.Pipeline, err error) {
+func (c *FakePipelines) Create(pipeline *kubesmithv1.Pipeline) (result *kubesmithv1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(pipelinesResource, c.ns, pipeline), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewCreateAction(pipelinesResource, c.ns, pipeline), &kubesmithv1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Pipeline), err
+	return obj.(*kubesmithv1.Pipeline), err
 }
 
 // Update takes the representation of a pipeline and updates it. Returns the server's representation of the pipeline, and an error, if there is any.
-func (c *FakePipelines) Update(pipeline *kubesmith_v1.Pipeline) (result *kubesmith_v1.Pipeline, err error) {
+func (c *FakePipelines) Update(pipeline *kubesmithv1.Pipeline) (result *kubesmithv1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(pipelinesResource, c.ns, pipeline), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewUpdateAction(pipelinesResource, c.ns, pipeline), &kubesmithv1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Pipeline), err
+	return obj.(*kubesmithv1.Pipeline), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakePipelines) UpdateStatus(pipeline *kubesmith_v1.Pipeline) (*kubesmith_v1.Pipeline, error) {
+func (c *FakePipelines) UpdateStatus(pipeline *kubesmithv1.Pipeline) (*kubesmithv1.Pipeline, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(pipelinesResource, "status", c.ns, pipeline), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewUpdateSubresourceAction(pipelinesResource, "status", c.ns, pipeline), &kubesmithv1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Pipeline), err
+	return obj.(*kubesmithv1.Pipeline), err
 }
 
 // Delete takes name of the pipeline and deletes it. Returns an error if one occurs.
 func (c *FakePipelines) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(pipelinesResource, c.ns, name), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewDeleteAction(pipelinesResource, c.ns, name), &kubesmithv1.Pipeline{})
 
 	return err
 }
@@ -124,17 +124,17 @@ func (c *FakePipelines) Delete(name string, options *v1.DeleteOptions) error {
 func (c *FakePipelines) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(pipelinesResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &kubesmith_v1.PipelineList{})
+	_, err := c.Fake.Invokes(action, &kubesmithv1.PipelineList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched pipeline.
-func (c *FakePipelines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmith_v1.Pipeline, err error) {
+func (c *FakePipelines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *kubesmithv1.Pipeline, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(pipelinesResource, c.ns, name, data, subresources...), &kubesmith_v1.Pipeline{})
+		Invokes(testing.NewPatchSubresourceAction(pipelinesResource, c.ns, name, data, subresources...), &kubesmithv1.Pipeline{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*kubesmith_v1.Pipeline), err
+	return obj.(*kubesmithv1.Pipeline), err
 }

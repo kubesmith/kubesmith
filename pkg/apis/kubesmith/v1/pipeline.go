@@ -29,29 +29,29 @@ type PipelineWorkspace struct {
 }
 
 type PipelineSpecJobTemplate struct {
-	Name          string                `json:"name"`
-	Image         string                `json:"image"`
-	Environment   map[string]string     `json:"environment"`
-	Command       []string              `json:"command"`
-	Args          []string              `json:"args"`
-	ConfigMapData map[string]string     `json:"configMapData"`
-	Artifacts     []PipelineJobArtifact `json:"artifacts"`
-	OnlyOn        []string              `json:"onlyOn"`
+	Name          string               `json:"name"`
+	Image         string               `json:"image"`
+	Environment   map[string]string    `json:"environment"`
+	Command       []string             `json:"command"`
+	Args          []string             `json:"args"`
+	ConfigMapData map[string]string    `json:"configMapData"`
+	Artifacts     PipelineJobArtifacts `json:"artifacts"`
+	OnlyOn        []string             `json:"onlyOn"`
 }
 
 type PipelineSpecJob struct {
-	Name          string                `json:"name"`
-	Image         string                `json:"image"`
-	Stage         string                `json:"stage"`
-	Extends       []string              `json:"extends"`
-	Environment   map[string]string     `json:"environment"`
-	Command       []string              `json:"command"`
-	Args          []string              `json:"args"`
-	ConfigMapData map[string]string     `json:"configMapData"`
-	Runner        []string              `json:"runner"`
-	AllowFailure  bool                  `json:"allowFailure"`
-	Artifacts     []PipelineJobArtifact `json:"artifacts"`
-	OnlyOn        []string              `json:"onlyOn"`
+	Name          string               `json:"name"`
+	Image         string               `json:"image"`
+	Stage         string               `json:"stage"`
+	Extends       []string             `json:"extends"`
+	Environment   map[string]string    `json:"environment"`
+	Command       []string             `json:"command"`
+	Args          []string             `json:"args"`
+	ConfigMapData map[string]string    `json:"configMapData"`
+	Runner        []string             `json:"runner"`
+	AllowFailure  bool                 `json:"allowFailure"`
+	Artifacts     PipelineJobArtifacts `json:"artifacts"`
+	OnlyOn        []string             `json:"onlyOn"`
 }
 
 type PipelineStatus struct {
@@ -229,7 +229,7 @@ func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpecJob {
 	}
 
 	env := map[string]string{}
-	artifacts := []PipelineJobArtifact{}
+	artifacts := PipelineJobArtifacts{}
 
 	for key, value := range p.Spec.Environment {
 		env[key] = value
@@ -271,8 +271,12 @@ func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpecJob {
 			}
 		}
 
-		for _, artifact := range template.Artifacts {
-			artifacts = append(artifacts, artifact)
+		for _, artifact := range template.Artifacts.OnSuccess {
+			artifacts.OnSuccess = append(artifacts.OnSuccess, artifact)
+		}
+
+		for _, artifact := range template.Artifacts.OnFail {
+			artifacts.OnFail = append(artifacts.OnFail, artifact)
 		}
 	}
 
@@ -280,8 +284,12 @@ func (p *Pipeline) expandJob(oldJob PipelineSpecJob) PipelineJobSpecJob {
 		env[key] = value
 	}
 
-	for _, artifact := range oldJob.Artifacts {
-		artifacts = append(artifacts, artifact)
+	for _, artifact := range oldJob.Artifacts.OnSuccess {
+		artifacts.OnSuccess = append(artifacts.OnSuccess, artifact)
+	}
+
+	for _, artifact := range oldJob.Artifacts.OnFail {
+		artifacts.OnFail = append(artifacts.OnFail, artifact)
 	}
 
 	job.Environment = env

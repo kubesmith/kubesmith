@@ -21,11 +21,11 @@ package v1
 import (
 	time "time"
 
-	kubesmith_v1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
+	kubesmithv1 "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
 	versioned "github.com/kubesmith/kubesmith/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/kubesmith/kubesmith/pkg/generated/informers/externalversions/internalinterfaces"
 	v1 "github.com/kubesmith/kubesmith/pkg/generated/listers/kubesmith/v1"
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
@@ -57,20 +57,20 @@ func NewPipelineJobInformer(client versioned.Interface, namespace string, resync
 func NewFilteredPipelineJobInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
-			ListFunc: func(options meta_v1.ListOptions) (runtime.Object, error) {
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
 				return client.KubesmithV1().PipelineJobs(namespace).List(options)
 			},
-			WatchFunc: func(options meta_v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
 				return client.KubesmithV1().PipelineJobs(namespace).Watch(options)
 			},
 		},
-		&kubesmith_v1.PipelineJob{},
+		&kubesmithv1.PipelineJob{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *pipelineJobInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *pipelineJobInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&kubesmith_v1.PipelineJob{}, f.defaultInformer)
+	return f.factory.InformerFor(&kubesmithv1.PipelineJob{}, f.defaultInformer)
 }
 
 func (f *pipelineJobInformer) Lister() v1.PipelineJobLister {
