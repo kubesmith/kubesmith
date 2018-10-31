@@ -9,7 +9,7 @@ import (
 )
 
 func GetPipelineJob(job api.PipelineJob) batchv1.Job {
-	return batchv1.Job{
+	template := batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   job.GetName(),
 			Labels: job.GetLabels(),
@@ -55,4 +55,12 @@ func GetPipelineJob(job api.PipelineJob) batchv1.Job {
 			},
 		},
 	}
+
+	previousStageName := job.GetPreviousPipelineStageName()
+	if previousStageName != "" {
+		template.Spec.Template.Spec.InitContainers = append(template.Spec.Template.Spec.InitContainers,
+			GetPipelineJobDownloadArtifactsInitContainer(job))
+	}
+
+	return template
 }

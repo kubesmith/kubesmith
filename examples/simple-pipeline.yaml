@@ -53,22 +53,24 @@ spec:
     extends:
     - default
     runner:
-    - echo "testing artifacts on success" > success.txt
+    - mkdir -p ./success
+    - echo "testing artifacts on success" > ./success/info.txt
     artifacts:
       onSuccess:
-      - success.txt
+      - success*
 
   - name: create-an-artifact-on-fail
     stage: second
     extends:
     - default
     runner:
-    - echo "testing artifacts on fail" > fail.txt
+    - mkdir -p ./fail
+    - echo "testing artifacts on fail" > ./fail/info.txt
     - purposefully_fail_on_this
     allowFailure: true
     artifacts:
       onFail:
-      - fail.txt
+      - fail*
 
   - name: demonstrate multiple script calls from one configuration
     stage: third
@@ -89,5 +91,5 @@ spec:
       third-script.sh: |
         echo "${FOO} from third script - this is ${SAMPLE_GLOBAL_VAR} :)"
         ls -la
-        cat success.txt
-        cat fail.txt
+        cat success/info.txt
+        cat fail/info.txt

@@ -386,7 +386,14 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 	defer cancelFunc()
 
 	repoArtifactCreated := make(chan bool, 1)
-	go c.waitForRepoArtifactToBeCreated(ctx, 2, original.Spec.Workspace.Storage.S3.BucketName, s3Client, repoArtifactCreated)
+	go c.waitForRepoArtifactToBeCreated(
+		ctx,
+		original.GetResourcePrefix(),
+		2,
+		original.Spec.Workspace.Storage.S3.BucketName,
+		s3Client,
+		repoArtifactCreated,
+	)
 
 	if exists := <-repoArtifactCreated; !exists {
 		logger.Info("repo artifact was not created; requeueing pipeline")
@@ -436,14 +443,26 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 	return nil
 }
 
-func (c *PipelineController) waitForRepoArtifactToBeCreated(ctx context.Context, secondsInterval int, bucketName string, s3Client *s3.S3Client, repoArtifactCreated chan bool) {
+func (c *PipelineController) waitForRepoArtifactToBeCreated(
+	ctx context.Context,
+	remotePath string,
+	secondsInterval int,
+	bucketName string,
+	s3Client *s3.S3Client,
+	repoArtifactCreated chan bool,
+) {
+	artifactRemotePath := fmt.Sprintf("%s/repo/repo.tar.gz", remotePath)
+
 	for {
 		select {
 		case <-ctx.Done():
-			repoArtifactCreated <- false
+			if ctx.Err() == context.DeadlineExceeded {
+				repoArtifactCreated <- false
+			}
 		default:
-			if exists, _ := s3Client.FileExists(bucketName, "repo.tar.gz"); exists {
+			if exists, _ := s3Client.FileExists(bucketName, artifactRemotePath); exists {
 				repoArtifactCreated <- true
+				return
 			}
 		}
 

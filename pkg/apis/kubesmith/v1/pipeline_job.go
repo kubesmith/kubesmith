@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -85,6 +86,21 @@ func (p *PipelineJob) GetPipelineStageName() string {
 	stageName := p.getLabelFromJob("PipelineStageName")
 
 	return strings.Replace(stageName, fmt.Sprintf("%s-", pipelineName), "", 1)
+}
+
+func (p *PipelineJob) GetPreviousPipelineStageName() string {
+	stageName := strings.Replace(p.GetPipelineStageName(), "stage-", "", 1)
+	stageNum, err := strconv.Atoi(stageName)
+	if err != nil {
+		return ""
+	}
+
+	stageNum--
+	if stageNum < 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("stage-%d", stageNum)
 }
 
 func (p *PipelineJob) GetPipelineJobName() string {
