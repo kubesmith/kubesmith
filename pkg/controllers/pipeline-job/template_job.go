@@ -1,6 +1,7 @@
 package pipelinejob
 
 import (
+	"fmt"
 	"strconv"
 
 	api "github.com/kubesmith/kubesmith/pkg/apis/kubesmith/v1"
@@ -24,7 +25,7 @@ func convertEnvironentToEnvVar(environment map[string]string) []corev1.EnvVar {
 }
 
 func GetJob(
-	name, image, repoPath string,
+	name, image, repoPath, pipelineName string,
 	command, args []string,
 	s3Config api.WorkspaceStorageS3,
 	environment, labels map[string]string,
@@ -47,7 +48,7 @@ func GetJob(
 					InitContainers: []corev1.Container{
 						corev1.Container{
 							Name:            "setup-workspace",
-							Image:           "kubesmith/kubesmith:0.1",
+							Image:           "kubesmith/kubesmith",
 							ImagePullPolicy: "Always",
 							Command:         []string{"kubesmith", "anvil", "extract"},
 							Args:            []string{"--logtostderr", "-v", "2"},
@@ -91,12 +92,12 @@ func GetJob(
 									Value: s3UseSSL,
 								},
 								corev1.EnvVar{
-									Name:  "LOCAL_PATH",
-									Value: "/kubesmith/workspace",
+									Name:  "S3_PATH",
+									Value: fmt.Sprintf("%s/repo", pipelineName),
 								},
 								corev1.EnvVar{
-									Name:  "REMOTE_ARCHIVE_PATHS",
-									Value: "repo.tar.gz",
+									Name:  "LOCAL_PATH",
+									Value: "/kubesmith/workspace",
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

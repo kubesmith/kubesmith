@@ -13,7 +13,7 @@ import (
 )
 
 func GetRepoCloneJob(
-	name string,
+	name, pipelineName string,
 	repo api.WorkspaceRepo,
 	s3Config api.WorkspaceStorageS3,
 	labels map[string]string,
@@ -69,7 +69,6 @@ func GetRepoCloneJob(
 									fmt.Sprintf("git clone %s /git/workspace", repo.URL),
 									"rm -rf /git/workspace/.git",
 									"ls -la /git/workspace",
-									"touch /git/kubesmith-ipc-flag",
 								}, "; "),
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -85,11 +84,31 @@ func GetRepoCloneJob(
 						},
 						corev1.Container{
 							Name:            "copy-workspace-to-s3",
-							Image:           "kubesmith/kubesmith:0.1",
+							Image:           "kubesmith/kubesmith",
 							ImagePullPolicy: "Always",
-							Command:         []string{"kubesmith", "anvil", "wait"},
+							Command:         []string{"kubesmith", "anvil", "sidecar"},
 							Args:            []string{"--logtostderr", "-v", "2"},
 							Env: []corev1.EnvVar{
+								corev1.EnvVar{
+									Name: "POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								corev1.EnvVar{
+									Name: "POD_NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+								corev1.EnvVar{
+									Name:  "SIDECAR_NAME",
+									Value: "copy-workspace-to-s3",
+								},
 								corev1.EnvVar{
 									Name:  "S3_HOST",
 									Value: s3Config.Host,
@@ -129,6 +148,10 @@ func GetRepoCloneJob(
 									Value: s3UseSSL,
 								},
 								corev1.EnvVar{
+									Name:  "S3_PATH",
+									Value: fmt.Sprintf("%s/repo", pipelineName),
+								},
+								corev1.EnvVar{
 									Name:  "ARCHIVE_FILE_NAME",
 									Value: "repo.tar.gz",
 								},
@@ -137,12 +160,8 @@ func GetRepoCloneJob(
 									Value: "/artifacts",
 								},
 								corev1.EnvVar{
-									Name:  "ARTIFACT_PATHS",
+									Name:  "SUCCESS_ARTIFACT_PATHS",
 									Value: "/git/workspace/**",
-								},
-								corev1.EnvVar{
-									Name:  "FLAG_FILE_PATH",
-									Value: "/git/kubesmith-ipc-flag",
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{

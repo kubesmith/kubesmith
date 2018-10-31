@@ -367,7 +367,8 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 	}
 
 	logger.Info("checking for repo artifact")
-	exists, err := s3Client.FileExists("workspace", "repo.tar.gz")
+	fileName := fmt.Sprintf("%s/repo/repo.tar.gz", original.GetResourcePrefix())
+	exists, err := s3Client.FileExists(original.Spec.Workspace.Storage.S3.BucketName, fileName)
 	if err != nil {
 		return errors.Wrap(err, "could not check for repo artifact")
 	} else if exists {
@@ -403,7 +404,8 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 }
 
 func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipeline, logger logrus.FieldLogger) error {
-	name := fmt.Sprintf("%s-clone-repo", original.GetResourcePrefix())
+	pipelineName := original.GetResourcePrefix()
+	name := fmt.Sprintf("%s-clone-repo", pipelineName)
 
 	// check to see if the job already exists
 	logger.Info("ensuring clone repo job is scheduled")
@@ -413,6 +415,7 @@ func (c *PipelineController) ensureRepoArtifactJobIsScheduled(original api.Pipel
 
 			job := GetRepoCloneJob(
 				name,
+				pipelineName,
 				original.Spec.Workspace.Repo,
 				original.Spec.Workspace.Storage.S3,
 				c.getWrappedLabels(original),

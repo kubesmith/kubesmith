@@ -361,6 +361,11 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 		if apierrors.IsNotFound(err) {
 			logger.Info("job does not exist; scheduling")
 
+			pipelineName, err := c.getPipelineName(original)
+			if err != nil {
+				return errors.Wrap(err, "could not get pipeline name")
+			}
+
 			command := original.Spec.Job.Command
 			args := original.Spec.Job.Args
 
@@ -374,6 +379,7 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 				original.GetName(),
 				original.Spec.Job.Image,
 				original.Spec.Workspace.Path,
+				pipelineName,
 				command,
 				args,
 				original.Spec.Workspace.Storage.S3,
@@ -394,6 +400,17 @@ func (c *PipelineJobController) ensureJobIsScheduled(original api.PipelineJob, l
 
 	logger.Info("job is scheduled")
 	return nil
+}
+
+func (c *PipelineJobController) getPipelineName(original api.PipelineJob) (string, error) {
+	labels := original.GetLabels()
+
+	pipelineID, ok := labels[api.GetLabelKey("PipelineID")]
+	if !ok {
+		return "", errors.New("no label exists")
+	}
+
+	return fmt.Sprintf("pipeline-%s", pipelineID), nil
 }
 
 func (c *PipelineJobController) getWrappedLabels(original api.PipelineJob) map[string]string {
