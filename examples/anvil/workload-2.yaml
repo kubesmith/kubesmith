@@ -20,9 +20,6 @@ data:
 
     # modify the contents of task-10.txt
     echo "Hello, world - from example-workload-2" > /workspace/task-10.txt
-
-    # write the IPC flag file
-    touch /workspace/done-doing-work
 ---
 apiVersion: batch/v1
 kind: Job
@@ -60,10 +57,10 @@ spec:
               key: minio-secret-key
         - name: S3_USE_SSL
           value: "false"
+        - name: S3_PATH
+          value: "/workspace-1"
         - name: LOCAL_PATH
           value: "/workspace"
-        - name: REMOTE_ARCHIVE_PATHS
-          value: "example-workload-1.tar.gz"
         volumeMounts:
         - name: workspace
           mountPath: /workspace
@@ -78,11 +75,21 @@ spec:
           mountPath: /workspace
         - name: artifacts
           mountPath: /artifacts
-      - name: anvil-wait
+      - name: anvil-sidecar
         image: kubesmith/kubesmith
         imagePullPolicy: Always
-        command: ['kubesmith', 'anvil', 'wait', '--logtostderr', '-v', '2']
+        command: ['kubesmith', 'anvil', 'sidecar']
         env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SIDECAR_NAME
+          value: "anvil-sidecar"
         - name: S3_HOST
           value: "minio.default.svc"
         - name: S3_PORT
@@ -101,14 +108,14 @@ spec:
               key: minio-secret-key
         - name: S3_USE_SSL
           value: "false"
+        - name: S3_PATH
+          value: "workload-2"
         - name: ARCHIVE_FILE_NAME
-          value: "example-workload-2.tar.gz"
+          value: "artifacts.tar.gz"
         - name: ARCHIVE_FILE_PATH
           value: "/artifacts"
-        - name: ARTIFACT_PATHS
+        - name: SUCCESS_ARTIFACT_PATHS
           value: "/workspace/task-10*"
-        - name: FLAG_FILE_PATH
-          value: "/workspace/done-doing-work"
         volumeMounts:
         - name: workspace
           mountPath: /workspace

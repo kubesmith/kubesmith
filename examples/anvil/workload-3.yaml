@@ -54,10 +54,10 @@ spec:
               key: minio-secret-key
         - name: S3_USE_SSL
           value: "false"
+        - name: S3_PATH
+          value: "/workspace-2"
         - name: LOCAL_PATH
           value: "/workspace"
-        - name: REMOTE_ARCHIVE_PATHS
-          value: "example-workload-1.tar.gz,example-workload-2.tar.gz"
         volumeMounts:
         - name: workspace
           mountPath: /workspace
