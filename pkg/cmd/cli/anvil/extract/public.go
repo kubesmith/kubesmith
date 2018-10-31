@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strings"
 
-	"github.com/golang/glog"
 	"github.com/kubesmith/kubesmith/pkg/client"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/archive"
 	"github.com/kubesmith/kubesmith/pkg/cmd/util/env"
 	"github.com/kubesmith/kubesmith/pkg/s3"
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -30,31 +29,26 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("s3-bucket-name", flags)
 	flags.BoolVar(&o.S3.UseSSL, "s3-use-ssl", true, "Indicates whether to use SSL when connecting to the s3 server")
 	env.BindEnvToFlag("s3-use-ssl", flags)
+	flags.StringVar(&o.S3.Path, "s3-path", "artifacts.tar.gz", "The directory that contains archives which will be downloaded and extracted from the specified s3 bucket")
+	env.BindEnvToFlag("s3-path", flags)
 	flags.StringVar(&o.LocalPath, "local-path", os.TempDir(), "The local path to a folder where the remote archive will be extracted")
 	env.BindEnvToFlag("local-path", flags)
-	flags.StringVar(&o.RemoteArchivePaths, "remote-archive-paths", "artifacts.tar.gz", "The paths of the remote archive(s) that will be downloaded from the specified s3 bucket")
-	env.BindEnvToFlag("remote-archive-paths", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
 	// ensure the local path exists
-	glog.V(1).Info("Ensuring local file path exists...")
 	if err := os.MkdirAll(o.LocalPath, os.ModePerm); err != nil {
 		return err
 	}
 
-	// make sure the remote archives exist before continuing
-	glog.V(1).Info("Ensuring remote archives exist...")
-	for _, file := range o.GetRemoteArchivePaths() {
-		exists, err := o.S3.client.FileExists(o.S3.BucketName, file)
+	// access key length: https://github.com/minio/minio/blob/master/docs/config/README.md
+	if len(o.S3.AccessKey) < 3 {
+		return fmt.Errorf("Invalid s3 access key")
+	}
 
-		if err != nil {
-			return err
-		} else if !exists {
-			return errors.Errorf("Remote file s3://%s/%s does not exist", o.S3.BucketName, file)
-		} else {
-			glog.V(1).Infof("Found s3://%s/%s", o.S3.BucketName, file)
-		}
+	// secret key length: https://github.com/minio/minio/blob/master/docs/config/README.md
+	if len(o.S3.SecretKey) < 8 {
+		return fmt.Errorf("Invalid s3 secret key")
 	}
 
 	return nil
@@ -67,48 +61,44 @@ func (o *Options) Complete(args []string, f client.Factory) error {
 	}
 
 	o.S3.client = s3Client
+	o.logger = logrus.New().WithField("name", "extract")
+
 	return nil
 }
 
-func (o *Options) GetRemoteArchivePaths() []string {
-	paths := []string{}
-	files := strings.Split(o.RemoteArchivePaths, ",")
-
-	for _, file := range files {
-		file = strings.TrimSpace(file)
-		paths = append(paths, file)
+func (o *Options) Run(c *cobra.Command, f client.Factory) error {
+	archives, err := o.getArchivesFromS3Path()
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve archives from s3 path")
+	} else if len(archives) == 0 {
+		o.logger.Info("no artifacts detected in s3 path; exiting")
+		os.Exit(0)
 	}
 
-	return paths
-}
-
-func (o *Options) Run(c *cobra.Command, f client.Factory) error {
-	// download the archive files and extract them to the local file path
-	for _, remoteFilePath := range o.GetRemoteArchivePaths() {
-		localFilePath := fmt.Sprintf("%s%s%s", os.TempDir(), uuid.NewV4(), path.Ext(remoteFilePath))
+	o.logger.Infof("detected %d archive(s)", len(archives))
+	for _, remoteArchivePath := range archives {
+		localFilePath := fmt.Sprintf("%s%s%s", os.TempDir(), uuid.NewV4(), path.Ext(remoteArchivePath))
 
 		// download the archive first
-		glog.V(1).Infof("Downloading file from s3://%s/%s to %s ... ", o.S3.BucketName, remoteFilePath, localFilePath)
-		if err := o.S3.client.DownloadFile(o.S3.BucketName, remoteFilePath, localFilePath); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		o.logger.Infof("downloading archive from s3://%s/%s to %s", o.S3.BucketName, remoteArchivePath, localFilePath)
+		if err := o.S3.client.DownloadFile(o.S3.BucketName, remoteArchivePath, localFilePath); err != nil {
+			return errors.Wrap(err, "could not download archive from s3")
 		}
 
-		// now, extract the archive to our localFilePath
-		glog.V(1).Info("Downloaded; extracting archive...")
+		// now, extract the archive to our local file path
+		o.logger.Info("downloaded archive; extracting...")
 		if err := archive.ExtractArchive(localFilePath, o.LocalPath); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			return errors.Wrap(err, "could not extract archive")
 		}
 
 		// finally, remove the downloaded archive
-		glog.V(1).Info("Extracted; cleaning up downloaded archive...")
+		o.logger.Info("extracted archive; cleaning up...")
 		if err := os.Remove(localFilePath); err != nil {
-			fmt.Printf("Could not clean up downloaded archive at %s ...\n", localFilePath)
+			o.logger.Infof("could not clean up downloaded archive at %s", localFilePath)
 		}
 	}
 
 	// finally, we're done!
-	glog.V(1).Infof("Successfully extracted remote file archives to %s!", o.LocalPath)
+	o.logger.Infof("successfully downloaded and extracted remote file archives to %s", o.LocalPath)
 	return nil
 }

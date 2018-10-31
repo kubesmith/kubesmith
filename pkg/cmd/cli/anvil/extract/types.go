@@ -2,12 +2,14 @@ package extract
 
 import (
 	"github.com/kubesmith/kubesmith/pkg/s3"
+	"github.com/sirupsen/logrus"
 )
 
 type Options struct {
-	S3                 OptionsS3
-	LocalPath          string
-	RemoteArchivePaths string
+	S3        OptionsS3
+	LocalPath string
+
+	logger logrus.FieldLogger
 }
 
 type OptionsS3 struct {
@@ -17,6 +19,7 @@ type OptionsS3 struct {
 	SecretKey  string
 	BucketName string
 	UseSSL     bool
+	Path       string
 
 	client *s3.S3Client
 }

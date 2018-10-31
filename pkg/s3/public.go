@@ -83,3 +83,21 @@ func (s3 *S3Client) DownloadFile(bucketName, remoteFilePath, localFilePath strin
 
 	return nil
 }
+
+func (s3 *S3Client) GetFilesFromPath(bucketName, path string) ([]string, error) {
+	files := []string{}
+	doneCh := make(chan struct{})
+
+	defer close(doneCh)
+
+	objectCh := s3.client.ListObjectsV2(bucketName, strings.Trim(path, "/"), true, doneCh)
+	for object := range objectCh {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+
+		files = append(files, object.Key)
+	}
+
+	return files, nil
+}
