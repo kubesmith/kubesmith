@@ -81,16 +81,14 @@ spec:
               key: minio-secret-key
         - name: S3_USE_SSL
           value: "false"
-        # - name: ARCHIVE_FILE_NAME
-        #   value: "example-workload-1.tar.gz"
-        # - name: ARCHIVE_FILE_PATH
-        #   value: "/artifacts"
-        # - name: ARTIFACT_PATHS
-        #   value: "/workspace/task-2*,/workspace/task-4*,/workspace/task-10*"
-        # - name: FLAG_FILE_PATH
-        #   value: "/workspace/done-doing-work"
-        # - name: FLAG_FILE_WATCH_TIMEOUT
-        #   value: "20"
+        - name: ARCHIVE_FILE_NAME
+          value: "example-workload-1.tar.gz"
+        - name: ARCHIVE_FILE_PATH
+          value: "/artifacts"
+        - name: SUCCESS_ARTIFACTS
+          value: "/workspace/task-2*,/workspace/task-4*,/workspace/task-10*"
+        - name: FAIL_ARTIFACTS
+          value: "/workspace/task-5*,/workspace/task-9*"
         volumeMounts:
         - name: workspace
           mountPath: /workspace

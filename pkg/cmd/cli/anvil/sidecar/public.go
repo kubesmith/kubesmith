@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -52,6 +51,10 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("timeout-seconds", flags)
 	flags.IntVar(&o.WatchIntervalSeconds, "watch-interval-seconds", 1, "The interval (in seconds) at which the sidecar will check for updates on the specified pod")
 	env.BindEnvToFlag("watch-interval-seconds", flags)
+	flags.StringVar(&o.SuccessArtifactPaths, "success-artifact-paths", "", "A comma-separated list of artifact paths that anvil will look to upload when the pod succeeds; please note that golang glob patterns are supported")
+	env.BindEnvToFlag("success-artifact-paths", flags)
+	flags.StringVar(&o.FailArtifactPaths, "fail-artifact-paths", "", "A comma-separated list of artifact paths that anvil will look to upload when the pod fails; please note that golang glob patterns are supported")
+	env.BindEnvToFlag("fail-artifact-paths", flags)
 }
 
 func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) error {
@@ -71,7 +74,7 @@ func (o *Options) Validate(c *cobra.Command, args []string, f client.Factory) er
 	}
 
 	// make sure a valid archive extension was specified
-	if !archive.IsValidArchiveExtension(o.GetArchiveFilePath()) {
+	if !archive.IsValidArchiveExtension(o.getArchiveFilePath()) {
 		return archive.GetInvalidFileFormatError()
 	}
 
@@ -186,16 +189,4 @@ func (o *Options) Run(c *cobra.Command, f client.Factory) error {
 
 	// finally, return no errors
 	return nil
-}
-
-func (o *Options) GetArchiveFilePath() string {
-	path := strings.TrimRight(o.ArchiveFile.Path, "/")
-	path = strings.TrimRight(path, "\\")
-
-	return fmt.Sprintf(
-		"%s%s%s",
-		path,
-		string(os.PathSeparator),
-		o.ArchiveFile.Name,
-	)
 }

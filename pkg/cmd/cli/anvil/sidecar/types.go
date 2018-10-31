@@ -18,6 +18,8 @@ type Options struct {
 	ArchiveFile          OptionsArchiveFile
 	TimeoutSeconds       int
 	WatchIntervalSeconds int
+	SuccessArtifactPaths string
+	FailArtifactPaths    string
 
 	kubeClient          kubernetes.Interface
 	logger              logrus.FieldLogger
