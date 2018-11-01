@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubesmith-forge
+  namespace: kubesmith
+  labels:
+    app: kubesmith
+    component: forge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubesmith
+      component: forge
+  template:
+    metadata:
+      labels:
+        app: kubesmith
+        component: forge
+    spec:
+      containers:
+      - name: kubesmith-forge
+        image: kubesmith/kubesmith
+        imagePullPolicy: Always
+        command: ["kubesmith", "forge", "server"]
+        args: ["--logtostderr", "-v", "2"]

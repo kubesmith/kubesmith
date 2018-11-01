@@ -185,15 +185,17 @@ func (m *MinioServer) WaitForAvailability(
 	for {
 		select {
 		case <-ctx.Done():
-			minioServerAvailable <- false
-			break
+			if ctx.Err() == context.DeadlineExceeded {
+				minioServerAvailable <- false
+				return
+			}
 		default:
 			deployment, err := m.deploymentLister.Deployments(namespace).Get(name)
 			if err != nil {
 				m.logger.Info(errors.Wrap(err, "could not fetch minio deployment"))
 			}
 
-			if deployment.Status.ReadyReplicas == deployment.Status.Replicas {
+			if deployment.Status.ReadyReplicas == 1 {
 				minioServerAvailable <- true
 				return
 			}

@@ -591,6 +591,7 @@ func (c *PipelineController) waitForRepoArtifactToBeCreated(
 		case <-ctx.Done():
 			if ctx.Err() == context.DeadlineExceeded {
 				repoArtifactCreated <- false
+				return
 			}
 		default:
 			if exists, _ := s3Client.FileExists(bucketName, artifactRemotePath); exists {

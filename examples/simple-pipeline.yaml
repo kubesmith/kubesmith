@@ -72,6 +72,34 @@ spec:
       onFail:
       - fail*
 
+  - name: do stuff 1
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "1"
+
+  - name: do stuff 2
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "2"
+
+  - name: do stuff 3
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "3"
+
+  - name: do stuff 4
+    stage: second
+    extends:
+    - default
+    runner:
+    - echo "4"
+
   - name: demonstrate multiple script calls from one configuration
     stage: third
     image: busybox
