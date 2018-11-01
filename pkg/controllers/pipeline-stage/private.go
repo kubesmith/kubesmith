@@ -120,7 +120,16 @@ func (c *PipelineStageController) processSuccessfulPipelineStage(original api.Pi
 	}
 
 	if pipeline.Status.StageIndex >= len(pipeline.Spec.Stages) {
-		logger.Info("pipeline stage index has already advanced to final stage; skipping")
+		logger.Info("pipeline stage index has already advanced to final stage")
+		logger.Info("marking pipeline as succceeded")
+		updatedPipeline := *pipeline.DeepCopy()
+		updatedPipeline.SetPhaseToSucceeded()
+
+		if _, err := c.patchPipeline(updatedPipeline, *pipeline); err != nil {
+			return errors.Wrap(err, "could not mark pipeline as succeeded")
+		}
+
+		logger.Info("marked pipeline as succeeded")
 		return nil
 	}
 
