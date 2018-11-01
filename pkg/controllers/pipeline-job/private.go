@@ -140,13 +140,64 @@ func (c *PipelineJobController) processSuccessfulPipelineJob(original api.Pipeli
 	// stuff an entry into the pipeline stage for this job
 	logger.Info("adding pipeline job completion to pipeline stage")
 	updatedPipelineStage := c.markPipelineJobAsCompleted(original, *pipelineStage.DeepCopy(), api.PhaseSucceeded)
-
 	if _, err := c.patchPipelineStage(updatedPipelineStage, *pipelineStage); err != nil {
 		return errors.Wrap(err, "could not add pipeline job completion to pipeline stage")
 	}
-
 	logger.Info("added pipeline job completion to pipeline stage")
+
+	// check to see if we can run another job
+	logger.Info("checking if another pipeline job can be run")
+	canRunAnotherPipelineJob, err := c.canRunAnotherPipelineJob(original)
+	if err != nil {
+		return errors.Wrap(err, "could not check if another pipeline job could be run")
+	}
+
+	if !canRunAnotherPipelineJob {
+		logger.Info("cannot run another pipeline job")
+		return nil
+	}
+
+	// check to see if there are additional queued jobs for this pipeline stage
+	logger.Info("retrieving next queued job")
+	queuedJob, err := c.getNextQueuedJob(original)
+	if err != nil {
+		return errors.Wrap(err, "could not retrieve next queued job")
+	} else if queuedJob == nil {
+		logger.Info("no other queued jobs for current stage found")
+		return nil
+	}
+	logger.Info("retrieved next queued job")
+
+	// mark the queued job as running
+	logger.Info("marking queued job as running")
+	updatedQueuedJob := *queuedJob.DeepCopy()
+	updatedQueuedJob.SetPhaseToRunning()
+	if _, err := c.patchPipelineJob(updatedQueuedJob, *queuedJob); err != nil {
+		return errors.Wrap(err, "could not mark queued job to running")
+	}
+
+	logger.Info("marked queued job as running")
 	return nil
+}
+
+func (c *PipelineJobController) getNextQueuedJob(original api.PipelineJob) (*api.PipelineJob, error) {
+	labelSelector := c.getResourceLabelSelector(original.GetLabels())
+	pipelineJobs, err := c.pipelineJobLister.PipelineJobs(original.GetNamespace()).List(labelSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(pipelineJobs) == 0 {
+		return nil, nil
+	}
+
+	for _, pipelineJob := range pipelineJobs {
+		if pipelineJob.Status.Phase == api.PhaseQueued {
+			return pipelineJob, nil
+		}
+	}
+
+	return nil, nil
 }
 
 func (c *PipelineJobController) markPipelineJobAsCompleted(pipelineJob api.PipelineJob, pipelineStage api.PipelineStage, phase api.Phase) api.PipelineStage {
