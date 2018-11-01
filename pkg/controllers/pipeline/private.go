@@ -126,6 +126,14 @@ func (c *PipelineController) processRunningPipeline(original api.Pipeline, logge
 		return errors.Wrap(err, "could not ensure service account exists")
 	}
 
+	if err := c.ensureRoleExists(original, logger); err != nil {
+		return errors.Wrap(err, "could not ensure role exists")
+	}
+
+	if err := c.ensureRoleBindingExists(original, logger); err != nil {
+		return errors.Wrap(err, "could not ensure role binding exists")
+	}
+
 	if c.pipelineNeedsMinio(original) == true {
 		minioServer, err := c.ensureMinioServerIsRunning(original, logger)
 		if err != nil {
@@ -205,6 +213,14 @@ func (c *PipelineController) processDeletedPipeline(original api.Pipeline, logge
 		return err
 	}
 
+	if err := c.deleteAssociatedRole(original, deleteOptions, logger); err != nil {
+		return err
+	}
+
+	if err := c.deleteAssociatedRoleBinding(original, deleteOptions, logger); err != nil {
+		return err
+	}
+
 	logger.Info("pipeline cleaned up")
 	return nil
 }
@@ -253,6 +269,38 @@ func (c *PipelineController) deleteAssociatedServiceAccount(
 	}
 
 	logger.Info("deleted service account")
+	return nil
+}
+
+func (c *PipelineController) deleteAssociatedRole(
+	original api.Pipeline,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
+	logger.Info("deleting role (if it exists)")
+	if err := c.kubeClient.RbacV1().Roles(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, "could not delete role")
+		}
+	}
+
+	logger.Info("deleted role")
+	return nil
+}
+
+func (c *PipelineController) deleteAssociatedRoleBinding(
+	original api.Pipeline,
+	deleteOptions metav1.DeleteOptions,
+	logger logrus.FieldLogger,
+) error {
+	logger.Info("deleting role binding (if it exists)")
+	if err := c.kubeClient.RbacV1().RoleBindings(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
+		if !apierrors.IsNotFound(err) {
+			return errors.Wrap(err, "could not delete role binding")
+		}
+	}
+
+	logger.Info("deleted role binding")
 	return nil
 }
 
@@ -356,6 +404,50 @@ func (c *PipelineController) ensureServiceAccountExists(original api.Pipeline, l
 	}
 
 	logger.Info("service account is scheduled")
+	return nil
+}
+
+func (c *PipelineController) ensureRoleExists(original api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("ensuring role exists")
+	if _, err := c.roleLister.Roles(original.GetNamespace()).Get(original.GetResourcePrefix()); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("role does not exist; scheduling...")
+
+			role := templates.GetPipelineRole(original)
+			if _, err := c.kubeClient.RbacV1().Roles(original.GetNamespace()).Create(&role); err != nil {
+				return errors.Wrap(err, "could not schedule role")
+			}
+
+			logger.Info("role is now scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get role")
+	}
+
+	logger.Info("role is scheduled")
+	return nil
+}
+
+func (c *PipelineController) ensureRoleBindingExists(original api.Pipeline, logger logrus.FieldLogger) error {
+	logger.Info("ensuring role binding exists")
+	if _, err := c.roleBindingLister.RoleBindings(original.GetNamespace()).Get(original.GetResourcePrefix()); err != nil {
+		if apierrors.IsNotFound(err) {
+			logger.Info("role binding does not exist; scheduling...")
+
+			roleBinding := templates.GetPipelineRoleBinding(original)
+			if _, err := c.kubeClient.RbacV1().RoleBindings(original.GetNamespace()).Create(&roleBinding); err != nil {
+				return errors.Wrap(err, "could not schedule role binding")
+			}
+
+			logger.Info("role binding is now scheduled")
+			return nil
+		}
+
+		return errors.Wrap(err, "could not get role binding")
+	}
+
+	logger.Info("role binding is scheduled")
 	return nil
 }
 

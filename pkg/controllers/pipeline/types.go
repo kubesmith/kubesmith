@@ -10,6 +10,7 @@ import (
 	appListersv1 "k8s.io/client-go/listers/apps/v1"
 	batchListersv1 "k8s.io/client-go/listers/batch/v1"
 	coreListersv1 "k8s.io/client-go/listers/core/v1"
+	rbacListersv1 "k8s.io/client-go/listers/rbac/v1"
 )
 
 type PipelineController struct {
@@ -27,5 +28,7 @@ type PipelineController struct {
 	serviceLister        coreListersv1.ServiceLister
 	jobLister            batchListersv1.JobLister
 	serviceAccountLister coreListersv1.ServiceAccountLister
+	roleLister           rbacListersv1.RoleLister
+	roleBindingLister    rbacListersv1.RoleBindingLister
 	clock                clock.Clock
 }

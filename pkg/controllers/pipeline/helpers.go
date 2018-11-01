@@ -13,6 +13,7 @@ import (
 	appInformersv1 "k8s.io/client-go/informers/apps/v1"
 	batchInformersv1 "k8s.io/client-go/informers/batch/v1"
 	coreInformersv1 "k8s.io/client-go/informers/core/v1"
+	rbacInformersv1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 )
@@ -29,6 +30,8 @@ func NewPipelineController(
 	serviceInformer coreInformersv1.ServiceInformer,
 	jobInformer batchInformersv1.JobInformer,
 	serviceAccountInformer coreInformersv1.ServiceAccountInformer,
+	roleInformer rbacInformersv1.RoleInformer,
+	roleBindingInformer rbacInformersv1.RoleBindingInformer,
 ) controllers.Interface {
 	c := &PipelineController{
 		GenericController:    generic.NewGenericController("Pipeline"),
@@ -43,6 +46,8 @@ func NewPipelineController(
 		serviceLister:        serviceInformer.Lister(),
 		jobLister:            jobInformer.Lister(),
 		serviceAccountLister: serviceAccountInformer.Lister(),
+		roleLister:           roleInformer.Lister(),
+		roleBindingLister:    roleBindingInformer.Lister(),
 		clock:                &clock.RealClock{},
 	}
 
@@ -56,6 +61,8 @@ func NewPipelineController(
 		serviceInformer.Informer().HasSynced,
 		jobInformer.Informer().HasSynced,
 		serviceAccountInformer.Informer().HasSynced,
+		roleInformer.Informer().HasSynced,
+		roleBindingInformer.Informer().HasSynced,
 	)
 
 	pipelineInformer.Informer().AddEventHandler(
