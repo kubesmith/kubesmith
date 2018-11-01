@@ -261,7 +261,7 @@ func (c *PipelineController) deleteAssociatedServiceAccount(
 	deleteOptions metav1.DeleteOptions,
 	logger logrus.FieldLogger,
 ) error {
-	logger.Info("deleting service account (if it exists)")
+	logger.Info("deleting service account")
 	if err := c.kubeClient.CoreV1().ServiceAccounts(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "could not delete service account")
@@ -277,7 +277,7 @@ func (c *PipelineController) deleteAssociatedRole(
 	deleteOptions metav1.DeleteOptions,
 	logger logrus.FieldLogger,
 ) error {
-	logger.Info("deleting role (if it exists)")
+	logger.Info("deleting role")
 	if err := c.kubeClient.RbacV1().Roles(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "could not delete role")
@@ -293,7 +293,7 @@ func (c *PipelineController) deleteAssociatedRoleBinding(
 	deleteOptions metav1.DeleteOptions,
 	logger logrus.FieldLogger,
 ) error {
-	logger.Info("deleting role binding (if it exists)")
+	logger.Info("deleting role binding")
 	if err := c.kubeClient.RbacV1().RoleBindings(original.GetNamespace()).Delete(original.GetResourcePrefix(), &deleteOptions); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return errors.Wrap(err, "could not delete role binding")
@@ -493,8 +493,8 @@ func (c *PipelineController) ensureRepoArtifactExists(original api.Pipeline, log
 	logger.Info("fetched secret data")
 
 	s3Client, err := s3.NewS3Client(
-		// todo: original.Spec.Workspace.Storage.S3.Host,
-		"127.0.0.1",
+		original.Spec.Workspace.Storage.S3.Host,
+		// todo: "127.0.0.1",
 		original.Spec.Workspace.Storage.S3.Port,
 		string(secret.Data[original.Spec.Workspace.Storage.S3.Credentials.Secret.AccessKeyKey]),
 		string(secret.Data[original.Spec.Workspace.Storage.S3.Credentials.Secret.SecretKeyKey]),
