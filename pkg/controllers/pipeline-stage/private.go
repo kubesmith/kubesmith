@@ -117,7 +117,9 @@ func (c *PipelineStageController) processSuccessfulPipelineStage(original api.Pi
 	if pipeline.HasSucceeded() || pipeline.HasFailed() {
 		logger.Info("pipeline has already completed; skipping")
 		return nil
-	} else if pipeline.Status.StageIndex == (len(pipeline.Spec.Jobs) + 1) {
+	}
+
+	if pipeline.Status.StageIndex >= len(pipeline.Spec.Stages) {
 		logger.Info("pipeline stage index has already advanced to final stage; skipping")
 		return nil
 	}
