@@ -14,7 +14,7 @@ func (o *Options) BindFlags(flags *pflag.FlagSet) {
 	env.BindEnvToFlag("namespace", flags)
 	flags.IntVar(&o.MaxRunningPipelines, "max-running-pipelines", 1, "The maximum number of pipelines that can run in the namespace at any given time")
 	env.BindEnvToFlag("max-running-pipelines", flags)
-	flags.IntVar(&o.MaxRunningPipelineJobs, "max-running-pipeline-jobs", 1, "The maximum number of pipelines that can run in the namespace at any given time")
+	flags.IntVar(&o.MaxRunningPipelineJobs, "max-running-pipeline-jobs", 3, "The maximum number of pipelines that can run in the namespace at any given time")
 	env.BindEnvToFlag("max-running-pipeline-jobs", flags)
 }
 
